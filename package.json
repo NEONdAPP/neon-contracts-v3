@@ -27,6 +27,7 @@
   "homepage": "https://github.com/NEONdAPP/neon-contracts-v3#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
-    "hardhat": "^2.12.6"
+    "hardhat": "^2.12.6",
+    "hardhat-gas-reporter": "^1.0.9"
   }
 }
