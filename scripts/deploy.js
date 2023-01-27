@@ -3,7 +3,7 @@ async function main() {
 
   console.log("Deploying contracts with the account:", deployer.address);
 
-  const Token = await ethers.getContractFactory("NPairs_out");
+  const Token = await ethers.getContractFactory("NPairs");
   const token = await Token.deploy(deployer.address);
 
   console.log("NPairs-out address:", token.address);
