@@ -9,16 +9,16 @@ contract NPairs is Ownable {
     struct token{
         bool active;
         uint8 decimals;
-        string symbol;
     }
 
-    //Token => Active
+    //Token = Active
     mapping (address => bool) srcToken;
-    //ChainId => Token => Struct (Normal + CC)
+    //ChainId => Token = Struct (Normal + CC)
     mapping (uint256 => mapping (address => token)) destToken;
-    //Strategy Address => Token => Active
+    //Strategy Address => Token = Active
     mapping (address => mapping (address => bool)) ibStrategy;
-    mapping (bytes32 => bool) listedPair;// Not needed anymore
+    //srcToken => chainId => destToken = Active
+    mapping (address => mapping (uint256 => mapping (address => bool))) NotAwailablePair;
 
     uint16 totStrategy;
     uint16 totDest;
@@ -44,9 +44,16 @@ contract NPairs is Ownable {
 
     function listIbStrategy(address _token, address _strategy) external onlyOwner {
         require(_token != address(0) && _strategy != address(0), "Null address not allowed");
-        require(destToken[block.chainId][_token].active, "Reference token not listed");
+        require(destToken[block.chainid][_token].active, "Reference token not listed");
         require(!ibStrategy[_token][_strategy], "Strategy already listed");
         _listIbStrategy(_token, _strategy);
+    }
+
+    function definePairAvailability(address _srcToken, uint256 _chainId, address _destToken) external onlyOwner {
+        require(_srcToken != address(0) && _destToken != address(0), "Null address not allowed");
+        require(srcToken[_srcToken], "Src.Token not listed");
+        require(destToken[_chainId][_destToken].active, "Dest.token not listed");
+        NotAwailablePair[_srcToken][_chainId][_destToken] = !NotAwailablePair[_srcToken][_chainId][_destToken];
     }
 
     /* INTERNAL */
@@ -59,21 +66,22 @@ contract NPairs is Ownable {
     }
 
     function _listDestToken(uint256 _chainId, address _token, uint8 _decimals, string memory _symbol) private {
+        string memory symbol;
         destToken[_chainId][_token].active = true;
         unchecked {
             totDest ++;
         }
         if(_chainId == block.chainid){
-            destToken[_chainId][_token].symbol = ERC20(_token).symbol();
+            symbol = ERC20(_token).symbol();
             destToken[_chainId][_token].decimals = ERC20(_token).decimals();
         }else{
-            destToken[_chainId][_token].symbol = _symbol;
+            symbol = _symbol;
             destToken[_chainId][_token].decimals = _decimals;
         }
-        emit DestTokenListed(_chainId, _token, destToken[_chainId][_token].symbol);
+        emit DestTokenListed(_chainId, _token, symbol);
     }
     function _listIbStrategy(address _token, address _strategy) private {
-        ibStrategy[_token][_strategy].active = true;
+        ibStrategy[_token][_strategy] = true;
         unchecked {
             totStrategy ++;
         }
@@ -81,26 +89,23 @@ contract NPairs is Ownable {
     }
     /* VIEW METHODS */
 
-    function pairData(address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external view returns(address srcToken, uint8 srcDecimals, address destToken, uint8 destDecimals) {
-        require(_idS <= type(uint16).max && _idD <= type(uint16).max, "ID overflow (uint16)");
-        require(_idS > 0 && _idD > 0, "IDs must be > 0");
-        require(_idS <= totSrc && _idD <= totDest[_chainId], "IDs out of range");
-        return (srcTokenPair[_idS], ERC20(srcTokenPair[_idS]).decimals(), destTokenPair[_chainId][_idD].token, destTokenPair[_chainId][_idD].decimals);
-    }
-
-    function totalListed() external view returns(uint16 srcToken, uint16 destToken, uint16 strategy){
+    function totalListed() external view returns(uint16 totSrcToken, uint16 TotDestToken, uint16 Totstrategy){
         return(totSrc, totDest, totStrategy);
     }
 
-    function isSrcTokenListed(address _token) external view returns(bool){
+    function isSrcTokenListed(address _token) public view returns(bool){
         return srcToken[_token];
     }
 
-    function isDestTokenListed(uint256 _chainId, address _token) external view returns(bool){
-        return destToken[_chainId][_token].active;
+    function isDestTokenListed(uint256 _chainId, address _token) public view returns(bool, uint8 decimals){
+        return (destToken[_chainId][_token].active, destToken[_chainId][_token].decimals);
     }
 
     function isIbStrategyListed(address _token, address _strategy) external view returns(bool){
-        return ibStrategy[_token][_strategy].active;
+        return ibStrategy[_token][_strategy];
+    }
+
+    function isPairAvailable(address _srcToken, uint256 _chainId, address _destToken) external view returns(bool){
+        return !(NotAwailablePair[_srcToken][_chainId][_destToken]);
     }
 }

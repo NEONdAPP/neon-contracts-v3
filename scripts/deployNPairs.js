@@ -3,10 +3,10 @@ async function main() {
 
   console.log("Deploying contracts with the account:", deployer.address);
 
-  const Token = await ethers.getContractFactory("NPairs");
-  const token = await Token.deploy(deployer.address);
+  const contract = await ethers.getContractFactory("NPairs");
+  const NPairs = await contract.deploy();
 
-  console.log("NPairs-out address:", token.address);
+  console.log("NPairs address:", NPairs.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
