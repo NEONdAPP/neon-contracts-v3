@@ -308,8 +308,85 @@ describe("NPairs Testing", function () {
                 contract.connect(owner).definePairAvailability(ethers.constants.AddressZero, 1, ethers.constants.AddressZero)
             ).to.be.revertedWith("Null address not allowed");
         });
-    });
-    //To be completed
 
-    //To check Token combinations
+        it("Should fail if SrcToken not listed", async function () {
+            const { contract, owner } = await loadFixture(deployContract);
+    
+            await expect(
+                contract.connect(owner).definePairAvailability(owner.address, 1, owner.address)
+            ).to.be.revertedWith("Src.Token not listed");
+        });
+
+        it("Should fail if DestToken not listed", async function () {
+            const { contract, owner } = await loadFixture(deployContract);
+            const { token1 } = await loadFixture(deployToken1);
+            await contract.connect(owner).listSrcToken(token1.address);
+
+            await expect(
+                contract.connect(owner).definePairAvailability(token1.address, 1, owner.address)
+            ).to.be.revertedWith("Dest.Token not listed");
+        });
+
+    //Correct Events
+        it("Should return 'true' if combination available", async function () {
+            const { contract, owner } = await loadFixture(deployContract);
+            const { token1 } = await loadFixture(deployToken1);
+            await contract.connect(owner).listSrcToken(token1.address);
+            await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
+
+            expect(await contract.connect(owner).isPairAvailable(token1.address, 1, token1.address)).to.equal(true);
+        });
+
+        it("Should return 'false' if combination not available", async function () {
+            const { contract, owner } = await loadFixture(deployContract);
+            const { token1 } = await loadFixture(deployToken1);
+            await contract.connect(owner).listSrcToken(token1.address);
+            await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
+            await contract.connect(owner).definePairAvailability(token1.address, 1, token1.address)
+
+            expect(await contract.connect(owner).isPairAvailable(token1.address, 1, token1.address)).to.equal(false);
+        });
+
+        it("Should not change state of the other combinations", async function () {
+            const { contract, owner } = await loadFixture(deployContract);
+            const { token1 } = await loadFixture(deployToken1);
+            const { token2 } = await loadFixture(deployToken2);
+            await contract.connect(owner).listSrcToken(token1.address);
+            await contract.connect(owner).listSrcToken(token2.address);
+            await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
+            await contract.connect(owner).listDestToken(1, token2.address, 18, "TST");
+            await contract.connect(owner).definePairAvailability(token1.address, 1, token1.address)
+            /* Combinations (Based on chainId 1)
+                Token1 - Token1
+                Token1 - Token2
+                Token2 - Token1
+                Token2 - Token2
+            */
+            expect(await contract.connect(owner).isPairAvailable(token2.address, 1, token1.address)).to.equal(true);
+            expect(await contract.connect(owner).isPairAvailable(token2.address, 1, token2.address)).to.equal(true);
+            expect(await contract.connect(owner).isPairAvailable(token1.address, 1, token2.address)).to.equal(true);
+            expect(await contract.connect(owner).isPairAvailable(token1.address, 1, token1.address)).to.equal(false);
+        });
+
+    });
+    describe("Function 'isPairAvailable'", function () {
+    //Fail Events
+        it("Should fail if SrcToken not listed", async function () {
+            const { contract, owner } = await loadFixture(deployContract);
+
+            await expect(
+                contract.connect(owner).isPairAvailable(owner.address, 1, owner.address)
+            ).to.be.revertedWith("Src.Token not listed");
+        });
+
+        it("Should fail if DestToken not listed", async function () {
+            const { contract, owner } = await loadFixture(deployContract);
+            const { token1 } = await loadFixture(deployToken1);
+            await contract.connect(owner).listSrcToken(token1.address);
+
+            await expect(
+                contract.connect(owner).isPairAvailable(token1.address, 1, owner.address)
+            ).to.be.revertedWith("Dest.Token not listed");
+        });
+    });
 });
