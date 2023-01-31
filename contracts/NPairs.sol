@@ -34,8 +34,8 @@ contract NPairs is Ownable {
      * @param   _token  Token address.
      */
     function listSrcToken(address _token) external onlyOwner {
-        require(_token != address(0), "Null address not allowed");
-        require(!srcToken[_token], "Token already listed");
+        require(_token != address(0), "NPairs: Null address not allowed");
+        require(!srcToken[_token], "NPairs: Token already listed");
         _listSrcToken(_token);
     }
 
@@ -48,9 +48,9 @@ contract NPairs is Ownable {
      * @param   _symbol  Token symbol.
      */
     function listDestToken(uint256 _chainId, address _token, uint8 _decimals, string memory _symbol) external onlyOwner {
-        require(_token != address(0), "Null address not allowed");
-        require(_chainId != 0, "Chain ID must be > 0");
-        require(!destToken[_chainId][_token].active, "Token already listed");
+        require(_token != address(0), "NPairs: Null address not allowed");
+        require(_chainId != 0, "NPairs: Chain ID must be > 0");
+        require(!destToken[_chainId][_token].active, "NPairs: Token already listed");
         _listDestToken(_chainId, _token, _decimals, _symbol);
     }
 
@@ -61,9 +61,9 @@ contract NPairs is Ownable {
      * @param   _strategy  Strategy address.
      */
     function listIbStrategy(address _token, address _strategy) external onlyOwner {
-        require(_token != address(0) && _strategy != address(0), "Null address not allowed");
-        require(destToken[block.chainid][_token].active, "Reference token not listed");
-        require(!ibStrategy[_token][_strategy], "Strategy already listed");
+        require(_token != address(0) && _strategy != address(0), "NPairs: Null address not allowed");
+        require(destToken[block.chainid][_token].active, "NPairs: Reference token not listed");
+        require(!ibStrategy[_token][_strategy], "NPairs: Strategy already listed");
         _listIbStrategy(_token, _strategy);
     }
 
@@ -74,9 +74,9 @@ contract NPairs is Ownable {
      * @param   _destToken  Destination token address.
      */
     function definePairAvailability(address _srcToken, uint256 _chainId, address _destToken) external onlyOwner {
-        require(_srcToken != address(0) && _destToken != address(0), "Null address not allowed");
-        require(srcToken[_srcToken], "Src.Token not listed");
-        require(destToken[_chainId][_destToken].active, "Dest.Token not listed");
+        require(_srcToken != address(0) && _destToken != address(0), "NPairs: Null address not allowed");
+        require(srcToken[_srcToken], "NPairs: Src.Token not listed");
+        require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
         NotAwailablePair[_srcToken][_chainId][_destToken] = !NotAwailablePair[_srcToken][_chainId][_destToken];
     }
 
@@ -158,9 +158,9 @@ contract NPairs is Ownable {
      * @return  true if pair is available.
      */
     function isPairAvailable(address _srcToken, uint256 _chainId, address _destToken) public view returns(bool){
-        require(_srcToken != address(0) && _destToken != address(0), "Null address not allowed");
-        require(srcToken[_srcToken], "Src.Token not listed");
-        require(destToken[_chainId][_destToken].active, "Dest.Token not listed");
+        require(_srcToken != address(0) && _destToken != address(0), "NPairs: Null address not allowed");
+        require(srcToken[_srcToken], "NPairs: Src.Token not listed");
+        require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
         return !(NotAwailablePair[_srcToken][_chainId][_destToken]);
     }
 }

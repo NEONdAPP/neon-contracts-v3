@@ -3,48 +3,37 @@ pragma solidity 0.8.17;
 
 contract NHistorian {
 
-    struct dataStruct{
-        mapping (uint256 => detailStruct) userData;
-        uint256 storeID;
-        uint256 bufferID;
+    struct data{
+        mapping (uint256 => detail) userData;
+        uint8 totStored;
+        uint8 bufferId;
     }
 
-    struct detailStruct{
-        uint256 pairId;
+    struct detail{
+        uint256 chainId;
+        address destToken;
         uint256 closedDcaTime;
-        uint256 destTokenEarned;//??
-        uint reason; // (0 = Completed, 1 = User Close DCA, 2 = Insufficient User Approval or Balance)
+        uint8 reason; // (0 = Completed, 1 = User Close DCA, 2 = Insufficient User Approval or Balance)
     }
 
-    mapping (address => dataStruct) database;
-
-    event Stored(address _owner, uint256 _storeId, uint256 _timestamp);
-
+    mapping (address => data) database;
 
     /* WRITE METHODS*/
 
-
-    function store(address _userAddress, detailStruct calldata _struct) internal {
-        require(_userAddress != address(0), "NEON: null address not allowed");
-        dataStruct storage data = database[_userAddress];
-        uint256 storeID;
-        if(data.bufferID == 0){
-            storeID = data.storeID;
-            data.storeID += 1;
-        }else{
-            storeID = data.bufferID - 1;
-        }
-        data.userData[storeID + 1].pairId = _struct.pairId;
-        data.userData[storeID + 1].closedDcaTime = _struct.closedDcaTime > 0 ? _struct.closedDcaTime : block.timestamp;//Manage case of DCA closed without exe
-        data.userData[storeID + 1].destTokenEarned = _struct.destTokenEarned;
-        data.userData[storeID + 1].reason = _struct.reason;
+    function storeDCA(address _userAddress, detail calldata _struct) internal {
+        require(_userAddress != address(0), "NHistorian: null address not allowed");
         //buffer
-        if(data.storeID >= 200){
-            data.bufferID = data.bufferID >= 200 ? 1 : data.bufferID + 1; 
+        database[_userAddress].bufferId = database[_userAddress].totStored >= 200 ? 1 : database[_userAddress].bufferId ++;
+        uint8 bufferId = database[_userAddress].bufferId;
+        database[_userAddress].userData[bufferId].chainId = _struct.chainId;
+        database[_userAddress].userData[bufferId].destToken = _struct.destToken;
+        database[_userAddress].userData[bufferId].closedDcaTime = _struct.closedDcaTime > 0 ? _struct.closedDcaTime : block.timestamp;//Manage case of DCA closed without exe
+        database[_userAddress].userData[bufferId].reason = _struct.reason;
+        unchecked {
+            database[_userAddress].totStored ++;
         }
-        emit Stored(_userAddress, storeID, block.timestamp);
-     }
-
+    }
+        
 
     /* VIEW METHODS*/
 
