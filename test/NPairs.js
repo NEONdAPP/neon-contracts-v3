@@ -50,7 +50,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listSrcToken(ethers.constants.AddressZero)
-            ).to.be.revertedWith("Null address not allowed");
+            ).to.be.revertedWith("NPairs: Null address not allowed");
         });
 
         it("Should fail if Token is already listed", async function () {
@@ -60,7 +60,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listSrcToken(token1.address)
-            ).to.be.revertedWith("Token already listed");
+            ).to.be.revertedWith("NPairs: Token already listed");
         });
 
     //Correct Events
@@ -118,7 +118,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listDestToken(1, ethers.constants.AddressZero, 18, "TST")
-            ).to.be.revertedWith("Null address not allowed");
+            ).to.be.revertedWith("NPairs: Null address not allowed");
         });
 
         it("Should fail if chainId is 0", async function () {
@@ -126,7 +126,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listDestToken(0, owner.address, 18, "TST")
-            ).to.be.revertedWith("Chain ID must be > 0");
+            ).to.be.revertedWith("NPairs: Chain ID must be > 0");
         });
 
         it("Should fail if Token is already listed", async function () {
@@ -136,7 +136,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listDestToken(1, token1.address, 18, "TST")
-            ).to.be.revertedWith("Token already listed");
+            ).to.be.revertedWith("NPairs: Token already listed");
         });
 
     //Correct Events
@@ -229,15 +229,15 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listIbStrategy(ethers.constants.AddressZero, owner.address)
-            ).to.be.revertedWith("Null address not allowed");
+            ).to.be.revertedWith("NPairs: Null address not allowed");
 
             await expect(
                 contract.connect(owner).listIbStrategy(owner.address, ethers.constants.AddressZero)
-            ).to.be.revertedWith("Null address not allowed");
+            ).to.be.revertedWith("NPairs: Null address not allowed");
 
             await expect(
                 contract.connect(owner).listIbStrategy(ethers.constants.AddressZero, ethers.constants.AddressZero)
-            ).to.be.revertedWith("Null address not allowed");
+            ).to.be.revertedWith("NPairs: Null address not allowed");
         });
 
         it("Should fail if Token isn't listed", async function () {
@@ -245,7 +245,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listIbStrategy(addr1.address, addr1.address)
-            ).to.be.revertedWith("Reference token not listed");
+            ).to.be.revertedWith("NPairs: Reference token not listed");
         });
 
         it("Should fail if Strategy is already listed", async function () {
@@ -255,7 +255,7 @@ describe("NPairs Testing", function () {
             await contract.connect(owner).listIbStrategy(token1.address, addr1.address);
 
             await expect(contract.connect(owner).listIbStrategy(token1.address, addr1.address)
-            ).to.be.revertedWith("Strategy already listed");
+            ).to.be.revertedWith("NPairs: Strategy already listed");
         });
     //Correct Events
         it("Should list the Strategy & emit the event", async function () {
@@ -298,15 +298,15 @@ describe("NPairs Testing", function () {
     
             await expect(
                 contract.connect(owner).definePairAvailability(ethers.constants.AddressZero, 1, owner.address)
-            ).to.be.revertedWith("Null address not allowed");
+            ).to.be.revertedWith("NPairs: Null address not allowed");
     
             await expect(
                 contract.connect(owner).definePairAvailability(owner.address, 1,  ethers.constants.AddressZero)
-            ).to.be.revertedWith("Null address not allowed");
+            ).to.be.revertedWith("NPairs: Null address not allowed");
     
             await expect(
                 contract.connect(owner).definePairAvailability(ethers.constants.AddressZero, 1, ethers.constants.AddressZero)
-            ).to.be.revertedWith("Null address not allowed");
+            ).to.be.revertedWith("NPairs: Null address not allowed");
         });
 
         it("Should fail if SrcToken not listed", async function () {
@@ -314,7 +314,7 @@ describe("NPairs Testing", function () {
     
             await expect(
                 contract.connect(owner).definePairAvailability(owner.address, 1, owner.address)
-            ).to.be.revertedWith("Src.Token not listed");
+            ).to.be.revertedWith("NPairs: Src.Token not listed");
         });
 
         it("Should fail if DestToken not listed", async function () {
@@ -324,7 +324,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).definePairAvailability(token1.address, 1, owner.address)
-            ).to.be.revertedWith("Dest.Token not listed");
+            ).to.be.revertedWith("NPairs: Dest.Token not listed");
         });
 
     //Correct Events
@@ -376,7 +376,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).isPairAvailable(owner.address, 1, owner.address)
-            ).to.be.revertedWith("Src.Token not listed");
+            ).to.be.revertedWith("NPairs: Src.Token not listed");
         });
 
         it("Should fail if DestToken not listed", async function () {
@@ -386,7 +386,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).isPairAvailable(token1.address, 1, owner.address)
-            ).to.be.revertedWith("Dest.Token not listed");
+            ).to.be.revertedWith("NPairs: Dest.Token not listed");
         });
     });
 });
