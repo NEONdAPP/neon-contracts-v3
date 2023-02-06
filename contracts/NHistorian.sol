@@ -18,14 +18,14 @@ contract NHistorian {
     }
 
     mapping (address => data) database;
-
+    
     /* WRITE METHODS*/
     /**
      * @notice  store DCA data to buffer database.
      * @param   _userAddress  reference address of the owner.
      * @param   _struct  data to be stored.
      */
-    function storeDCA(address _userAddress, histDetail calldata _struct) internal {
+    function _storeDCA(address _userAddress, histDetail calldata _struct) internal {
         require(_userAddress != address(0), "NHistorian: Null address not allowed");
         //buffer
         database[_userAddress].bufferId = database[_userAddress].bufferId >= 200 ? 1 : database[_userAddress].bufferId +1;
@@ -48,7 +48,7 @@ contract NHistorian {
      * @return  histDetail batch data for each nBatch.
      * @return  nBatch number of batch data retrieved.
      */
-    function getHistoryDataBatch(address _userAddress) internal view returns(histDetail[] memory, uint8 nBatch){
+    function _getHistoryDataBatch(address _userAddress) internal view returns(histDetail[] memory, uint8 nBatch){
         uint8 totStored = database[_userAddress].totStored;
         histDetail[] memory dataOut = new histDetail[](totStored);
         for(uint8 i=1; i<=totStored; i++){

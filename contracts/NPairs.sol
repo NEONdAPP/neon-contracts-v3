@@ -116,7 +116,7 @@ contract NPairs is Ownable {
     /**
      * @notice  Return total tokens and strategy listed.
      */
-    function totalListed() external view returns(uint16 totSrcToken, uint16 TotDestToken, uint16 Totstrategy){
+    function totalListed() external view returns(uint16 totSrcToken, uint16 totDestToken, uint16 totstrategy){
         return(totSrc, totDest, totStrategy);
     }
 
