@@ -80,7 +80,7 @@ contract NPairs is Ownable {
         NotAwailablePair[_srcToken][_chainId][_destToken] = !NotAwailablePair[_srcToken][_chainId][_destToken];
     }
 
-    /* INTERNAL */
+    /* PRIVATE */
     function _listSrcToken(address _token) private {
         srcToken[_token] = true;
         unchecked {
@@ -146,7 +146,7 @@ contract NPairs is Ownable {
      * @param   _strategy  Strategy address.
      * @return  true if strategy is listed.
      */
-    function isIbStrategyListed(address _token, address _strategy) external view returns(bool){
+    function isIbStrategyListed(address _token, address _strategy) public view returns(bool){
         return ibStrategy[_token][_strategy];
     }
 

@@ -20,6 +20,7 @@ contract NHistorian {
     mapping (address => data) database;
     
     /* WRITE METHODS*/
+    /* INTERNAL */
     /**
      * @notice  store DCA data to buffer database.
      * @param   _userAddress  reference address of the owner.
@@ -42,6 +43,7 @@ contract NHistorian {
         }
     }
     /* VIEW METHODS*/
+    /* INTERNAL */
     /**
      * @notice  Retrieve all data from a specific address.
      * @param   _userAddress  reference address.
