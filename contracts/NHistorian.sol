@@ -20,7 +20,7 @@ contract NHistorian {
         uint256 chainId;
         address destToken;
         uint256 closedDcaTime;
-        uint8 reason; // (0 = Completed, 1 = User Close DCA, ...)
+        uint8 reason; // (0 = Completed, 1 = User Close DCA, 2 = Strike Reached...)
     }
 
     mapping (address => data) database;
