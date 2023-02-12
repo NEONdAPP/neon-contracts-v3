@@ -4,6 +4,11 @@ pragma solidity 0.8.17;
 import {ERC20} from "./lib/ERC20.sol";
 import {Ownable} from "./access/Ownable.sol";
 
+/**
+ * @author  Hyper0x0 for NEON Protocol.
+ * @title   NPairs.
+ * @notice  This contract deals with listing and checking the validity of the tokens pairs set in the DCAs.
+ */
 contract NPairs is Ownable {
 
     struct token{

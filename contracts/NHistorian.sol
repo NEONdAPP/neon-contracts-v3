@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+/**
+ * @author  Hyper0x0 for NEON Protocol.
+ * @title   NHistorian.
+ * @dev     All internal must be used as an abstract contract.
+ * @notice  This contract takes care of historicizing the data of past DCAs for each user.
+ */
 contract NHistorian {
 
     struct data{
