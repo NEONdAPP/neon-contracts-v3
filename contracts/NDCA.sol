@@ -16,11 +16,10 @@ contract NDCA {
         uint8 destDecimals;
         address ibStrategy;
         uint256 srcAmount;
-        uint8 fee;// 2 dec precision (e.g. 100 => 1.0%)
-        uint8 tau;//day
+        uint8 tau;
         uint40 nextExecution;//sec
         uint40 lastExecutionOk;
-        uint256 averagePrice;// $(precision 6 dec)
+        uint256 averagePrice;//USD (precision 6 dec)
         uint256 destTokenEarned;
         uint40 reqExecution;//0 = Unlimited
         uint40 perfExecution;//counting only when completed correctly
@@ -30,33 +29,30 @@ contract NDCA {
     }
 
     struct dcaDetail{
-        bool dcaActive;//??
         address reciever;
         address srcToken;
         uint256 chainId;
         address destToken;
         address ibStrategy;
         uint256 srcAmount;
-        uint8 fee;// 2 dec precision (e.g. 100 => 1.0%)
-        uint8 tau;//day
-        uint40 nextExecution;//sec nextDcaTime --> nextExecution
-        uint40 lastExecutionOk;// lastDcaTimeOk --> lastExecutionOk
-        uint256 averagePrice;//USD (precision 6 dec) averageBuyPrice --> averagePrice
+        uint8 tau;
+        uint40 nextExecution;
+        uint40 lastExecutionOk;
+        uint256 averagePrice;
         uint256 destTokenEarned;
-        uint40 reqExecution;//0 = Unlimited exeRequired --> reqExecution
-        uint40 perfExecution;//exeCompleted --> perfExecution (counting only when completed correctly)
-        uint8 strike;//userError --> strike
-        uint8 code; //code --> codeExecution
-
-        bool allowanceOK;//?? maybe only for the "detail" section
+        uint40 reqExecution;
+        uint40 perfExecution;
+        uint8 strike;
+        uint8 code;
+        bool allowOK;
         bool balanceOK;
     }
 
     mapping (uint40 => dcaData) DCAs;
     mapping (bytes32 => uint40) dcaPosition;
     mapping (address => mapping (address => uint256)) userAllowance;
-    uint40 activeDCAs;
-    uint40 totalPositions;
+    uint40 public activeDCAs;
+    uint40 public totalPositions;
 
     uint8 immutable MIN_TAU; //days
     uint8 immutable MAX_TAU; //days
@@ -69,6 +65,7 @@ contract NDCA {
     event DCAClosed(uint40 positionId, address owner);
     event DCASkipExe(uint40 positionId, address owner, uint40 _nextExecution);
     event DCAExecuted(uint40 positionId, address indexed reciever, uint256 chainId, uint256 amount, bool ibEnable, uint8 code);
+    event DCAError(uint40 positionId, address indexed owner, uint8 strike);
 
     constructor(address _NRouter, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau, uint8 _minFee){
         NROUTER = _NRouter;
@@ -90,7 +87,6 @@ contract NDCA {
         uint8 _destDecimals,
         address _ibStrategy,
         uint256 _srcAmount,
-        uint8 _fee,
         uint8 _tau,
         uint40 _reqExecution,
         bool _nowFirstExecution
@@ -98,12 +94,12 @@ contract NDCA {
         require(_user != address(0) && _reciever != address(0), "NDCA: Null address not allowed");
         //require not needed, in the Core they are already checked against NPairs
         require(_tau >= MIN_TAU && _tau <= MAX_TAU, "NDCA: Tau out of limits");
-        require(_fee >= MIN_FEE, "NDCA: Fee under the limit");
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
         require(DCAs[dcaPosition[uniqueId]].owner == address(0), "NDCA: Already created with this pair");
         uint256 allowanceToAdd = _reqExecution == 0 ? DEFAULT_APPROVAL * 10 ** ERC20(_srcToken).decimals() : _srcAmount;
         userAllowance[_user][_srcToken] = (userAllowance[_user][_srcToken] + allowanceToAdd) < type(uint256).max ? (userAllowance[_user][_srcToken] + allowanceToAdd) : type(uint256).max;
         require(ERC20(_srcToken).allowance(_user, address(this)) >= userAllowance[_user][_srcToken],"NDCA: Insufficient approved token");
+        require(ERC20(_srcToken).balanceOf(_user) >= _srcAmount,"NDCA: Insufficient balance");
         if(dcaPosition[uniqueId] == 0){
             require(totalPositions <= type(uint40).max, "NDCA: Reached max positions");
             unchecked {
@@ -119,7 +115,6 @@ contract NDCA {
         DCAs[dcaPosition[uniqueId]].destDecimals = _destDecimals;
         DCAs[dcaPosition[uniqueId]].ibStrategy = _ibStrategy;
         DCAs[dcaPosition[uniqueId]].srcAmount = _srcAmount;
-        DCAs[dcaPosition[uniqueId]].fee = _fee;
         DCAs[dcaPosition[uniqueId]].tau = _tau;
         DCAs[dcaPosition[uniqueId]].nextExecution = _nowFirstExecution ? uint40(block.timestamp) : (uint40(block.timestamp)+(_tau*TIME_BASE));
         DCAs[dcaPosition[uniqueId]].lastExecutionOk = 0;
@@ -171,8 +166,9 @@ contract NDCA {
 //Router
 // need to be called after deposit for IB and then call historian
 // TO ADD EVENT TO HAVE CLEAR VIEW OF EXECUTION FOR THE USER
-    function _updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint8 _code, uint256 _averagePrice) internal returns (bool ToClose, uint8 reason){
-        require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: DCA id out of range");
+
+    function _updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint8 _code, uint256 _averagePrice) internal returns (bool toBeStored, uint8 reason){
+        require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
         require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
         DCAs[_dcaId].nextExecution += (DCAs[_dcaId].tau * TIME_BASE);
         DCAs[_dcaId].code = _code;
@@ -184,65 +180,113 @@ contract NDCA {
                 DCAs[_dcaId].perfExecution ++;
                 DCAs[_dcaId].averagePrice = DCAs[_dcaId].averagePrice == 0 ? _averagePrice : ((DCAs[_dcaId].averagePrice + _averagePrice) / 2);
             }
-            DCAExecuted();//reciever
+            emit DCAExecuted(_dcaId, DCAs[_dcaId].reciever, DCAs[_dcaId].chainId, _destTokenAmount, (DCAs[_dcaId].ibStrategy != address(0)), _code);
         }else{
             if(DCAs[_dcaId].initExecution){
                 DCAs[_dcaId].initExecution = false;
-                address source = DCAs[_dcaId].chainId == block.chainid ? address(this) : NROUTER;
-                ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(source, DCAs[_dcaId].owner, DCAs[_dcaId].srcAmount);
+                _refund(DCAs[_dcaId].chainId, DCAs[_dcaId].srcToken, DCAs[_dcaId].owner, DCAs[_dcaId].srcAmount);
             }
             unchecked {
                 DCAs[_dcaId].strike ++;
             }
+            emit DCAError(_dcaId, DCAs[_dcaId].owner, DCAs[_dcaId].strike);
         }
-        //Completed
-        if(DCAs[_dcaId].reqExecution != 0 && DCAs[_dcaId].perfExecution >= DCAs[_dcaId].reqExecution){
+        //Completed or Errors
+        if((DCAs[_dcaId].reqExecution != 0 && DCAs[_dcaId].perfExecution >= DCAs[_dcaId].reqExecution) || DCAs[_dcaId].strike >= 2){
             _closeDCA(DCAs[_dcaId].owner, DCAs[_dcaId].srcToken, DCAs[_dcaId].chainId, DCAs[_dcaId].destToken, DCAs[_dcaId].ibStrategy);
-            ToClose = true;
-        }
-        //Closed due errors
-        if(DCAs[_dcaId].strike >= 2){
-            _closeDCA(DCAs[_dcaId].owner, DCAs[_dcaId].srcToken, DCAs[_dcaId].chainId, DCAs[_dcaId].destToken, DCAs[_dcaId].ibStrategy);
-            ToClose = true;
-            reason = 2;
+            toBeStored = true;
+            if(DCAs[_dcaId].strike >= 2){reason = 2;}
         }
     }
 
-    function _initDCA() internal {
-
+    function _initExecution(uint40 _dcaId) internal {
+        require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
+        require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
+        if(!DCAs[_dcaId].initExecution){
+            DCAs[_dcaId].initExecution = true;
+            ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(DCAs[_dcaId].owner, NROUTER, DCAs[_dcaId].srcAmount);
+        }
     }
     /* PRIVATE */
-
+    function _refund(uint256 _chainId, address _token, address _user, uint256 _amount) private {
+        if(_chainId == block.chainid){
+            ERC20(_token).safeTransfer(_user, _amount);
+        }else{
+            ERC20(_token).safeTransferFrom(NROUTER, _user, _amount);
+        }
+    }
 
     /* VIEW METHODS*/
+    /* INTERNAL */
 //Frontend
-    function checkAllowance(address _user, address _srcToken, uint256 _srcAmount) public view returns (bool AllowOk, bool IncreaseAllow, bool MaxAllow, uint256 AllowanceDCA){
+    function _checkAllowance(address _user, address _srcToken, uint256 _srcAmount) internal view returns (bool allowOk, bool increaseAllow, bool maxAllow, uint256 allowanceDCA){
         uint256 ERC20Allowance = ERC20(_srcToken).allowance(_user, address(this));
         if(ERC20Allowance >= userAllowance[_user][_srcToken] && (userAllowance[_user][_srcToken] + _srcAmount) < type(uint256).max){
             if((ERC20Allowance - userAllowance[_user][_srcToken]) >= _srcAmount){
-                AllowOk = true;
+                allowOk = true;
             }else{
-                IncreaseAllow = true;
+                increaseAllow = true;
             }
         }
-        MaxAllow = (userAllowance[_user][_srcToken] + _srcAmount) >= type(uint256).max;
-        AllowanceDCA = userAllowance[_user][_srcToken];
+        maxAllow = (userAllowance[_user][_srcToken] + _srcAmount) >= type(uint256).max;
+        allowanceDCA = userAllowance[_user][_srcToken];
     }
     //function to view Detail + data for router
-    /* INTERNAL */
-//Router
-    function _readyDCA() internal view returns (bool execute, bool AllowOk){
 
+//Router
+    function _precheck(uint40 _dcaId) internal view returns (bool){
+        return (block.timestamp >= DCAs[_dcaId].nextExecution);
     }
 
-//Router
-    function _exeDataDCA() internal view returns (bool execute, bool AllowOk){
+    function _check(uint40 _dcaId) internal view returns (bool exe, bool allowOk, bool balanceOk){
+        exe = (block.timestamp >= DCAs[_dcaId].nextExecution);
+        allowOk = (ERC20(DCAs[_dcaId].srcToken).allowance(DCAs[_dcaId].owner, address(this)) >= DCAs[_dcaId].srcAmount);
+        balanceOk = (ERC20(DCAs[_dcaId].srcToken).balanceOf(DCAs[_dcaId].owner) >= DCAs[_dcaId].srcAmount);
+    }
 
+
+//Router
+    function _dataDCA(uint40 _dcaId) internal view returns (
+        address _reciever,
+        address _srcToken,
+        uint8 _srcDecimals,
+        uint256 _chainId,
+        address _destToken,
+        uint8 _destDecimals,
+        uint256 _srcAmount
+    ){
+        _reciever = DCAs[_dcaId].reciever;
+        _srcToken = DCAs[_dcaId].srcToken;
+        _srcDecimals = ERC20(DCAs[_dcaId].srcToken).decimals();
+        _chainId = DCAs[_dcaId].chainId;
+        _destToken = DCAs[_dcaId].destToken;
+        _destDecimals = DCAs[_dcaId].destDecimals;
+        _srcAmount = DCAs[_dcaId].srcAmount;
     }
 
 //Frontend
-    function _detailDCA() internal view returns (bool execute, bool AllowOk){
-
+    function _detailDCA(uint40 _dcaId, address _user) internal view returns (dcaDetail memory){
+        dcaDetail memory data;
+        if(DCAs[_dcaId].owner == _user){
+            data.reciever = DCAs[_dcaId].reciever;
+            data.srcToken = DCAs[_dcaId].srcToken;
+            data.chainId = DCAs[_dcaId].chainId;
+            data.destToken = DCAs[_dcaId].destToken;
+            data.ibStrategy = DCAs[_dcaId].ibStrategy;
+            data.srcAmount = DCAs[_dcaId].srcAmount;
+            data.tau = DCAs[_dcaId].tau;
+            data.nextExecution = DCAs[_dcaId].nextExecution;
+            data.lastExecutionOk = DCAs[_dcaId].lastExecutionOk;
+            data.averagePrice = DCAs[_dcaId].averagePrice;
+            data.destTokenEarned = DCAs[_dcaId].destTokenEarned;
+            data.reqExecution = DCAs[_dcaId].reqExecution;
+            data.perfExecution = DCAs[_dcaId].perfExecution;
+            data.strike = DCAs[_dcaId].strike;
+            data.code = DCAs[_dcaId].code;
+            data.allowOK = (ERC20(DCAs[_dcaId].srcToken).allowance(DCAs[_dcaId].owner, address(this)) >= DCAs[_dcaId].srcAmount);
+            data.balanceOK = (ERC20(DCAs[_dcaId].srcToken).balanceOf(DCAs[_dcaId].owner) >= DCAs[_dcaId].srcAmount);
+        }
+        return data;
     }
 
     /* PRIVATE */
