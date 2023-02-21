@@ -54,9 +54,8 @@ contract NDCA {
     uint40 public activeDCAs;
     uint40 public totalPositions;
 
-    uint8 immutable MIN_TAU; //days
-    uint8 immutable MAX_TAU; //days
-    uint8 immutable MIN_FEE; //2 dec precision (e.g. 100 => 1.0%) 50
+    uint8 immutable MIN_TAU;
+    uint8 immutable MAX_TAU;
     uint24 immutable TIME_BASE;//86400
     uint256 immutable public DEFAULT_APPROVAL; //150000000000000000000 ??
     address immutable public NROUTER;
@@ -67,13 +66,12 @@ contract NDCA {
     event DCAExecuted(uint40 positionId, address indexed reciever, uint256 chainId, uint256 amount, bool ibEnable, uint8 code);
     event DCAError(uint40 positionId, address indexed owner, uint8 strike);
 
-    constructor(address _NRouter, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau, uint8 _minFee){
+    constructor(address _NRouter, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau){
         NROUTER = _NRouter;
         DEFAULT_APPROVAL = _defaultApproval;
         TIME_BASE = _timeBase;//Day to Seconds
         MIN_TAU = _minTau;
         MAX_TAU = _maxTau;
-        MIN_FEE = _minFee;
     }
 
     /* WRITE METHODS*/
@@ -96,10 +94,11 @@ contract NDCA {
         require(_tau >= MIN_TAU && _tau <= MAX_TAU, "NDCA: Tau out of limits");
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
         require(DCAs[dcaPosition[uniqueId]].owner == address(0), "NDCA: Already created with this pair");
-        uint256 allowanceToAdd = _reqExecution == 0 ? DEFAULT_APPROVAL * 10 ** ERC20(_srcToken).decimals() : _srcAmount;
-        userAllowance[_user][_srcToken] = (userAllowance[_user][_srcToken] + allowanceToAdd) < type(uint256).max ? (userAllowance[_user][_srcToken] + allowanceToAdd) : type(uint256).max;
-        require(ERC20(_srcToken).allowance(_user, address(this)) >= userAllowance[_user][_srcToken],"NDCA: Insufficient approved token");
-        require(ERC20(_srcToken).balanceOf(_user) >= _srcAmount,"NDCA: Insufficient balance");
+        uint256 allowanceToAdd = _reqExecution == 0 ? DEFAULT_APPROVAL * 10 ** ERC20(_srcToken).decimals() : _srcAmount * _reqExecution;
+        address owner = _user;//too avoid "Stack too Deep"
+        userAllowance[owner][_srcToken] = (userAllowance[owner][_srcToken] + allowanceToAdd) < type(uint256).max ? (userAllowance[owner][_srcToken] + allowanceToAdd) : type(uint256).max;
+        require(ERC20(_srcToken).allowance(owner, address(this)) >= userAllowance[owner][_srcToken],"NDCA: Insufficient approved token");
+        require(ERC20(_srcToken).balanceOf(owner) >= _srcAmount,"NDCA: Insufficient balance");
         if(dcaPosition[uniqueId] == 0){
             require(totalPositions <= type(uint40).max, "NDCA: Reached max positions");
             unchecked {
@@ -160,9 +159,6 @@ contract NDCA {
         emit DCASkipExe(dcaPosition[uniqueId], _user, DCAs[dcaPosition[uniqueId]].nextExecution);
     }
 
-    function _modifyDCA() internal {
-
-    }
 //Router
 // need to be called after deposit for IB and then call historian
 // TO ADD EVENT TO HAVE CLEAR VIEW OF EXECUTION FOR THE USER
@@ -205,14 +201,6 @@ contract NDCA {
         if(!DCAs[_dcaId].initExecution){
             DCAs[_dcaId].initExecution = true;
             ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(DCAs[_dcaId].owner, NROUTER, DCAs[_dcaId].srcAmount);
-        }
-    }
-    /* PRIVATE */
-    function _refund(uint256 _chainId, address _token, address _user, uint256 _amount) private {
-        if(_chainId == block.chainid){
-            ERC20(_token).safeTransfer(_user, _amount);
-        }else{
-            ERC20(_token).safeTransferFrom(NROUTER, _user, _amount);
         }
     }
 
@@ -298,5 +286,12 @@ contract NDCA {
         address _ibStrategy
     ) private pure returns (bytes32){
         return keccak256(abi.encodePacked(_user, _srcToken, _chainId, _destToken, _ibStrategy));
+    }
+    function _refund(uint256 _chainId, address _token, address _user, uint256 _amount) private {
+        if(_chainId == block.chainid){
+            ERC20(_token).safeTransfer(_user, _amount);
+        }else{
+            ERC20(_token).safeTransferFrom(NROUTER, _user, _amount);
+        }
     }
 }
