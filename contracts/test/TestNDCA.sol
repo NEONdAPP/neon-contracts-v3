@@ -42,8 +42,8 @@ contract TestNDCA is NDCA {
     }
 
     //Router
-    function updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint8 _code, uint256 _averagePrice) public returns (bool toBeStored, uint8 reason){
-        return _updateDCA(_dcaId, _destTokenAmount, _code, _averagePrice);
+    function updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice, bool _internalError) public returns (bool toBeStored, uint8 reason){
+        return _updateDCA(_dcaId, _destTokenAmount, _code, _averagePrice, _internalError);
     }
 
     function initExecution(uint40 _dcaId) public {

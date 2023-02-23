@@ -24,7 +24,7 @@ contract NDCA {
         uint40 reqExecution;//0 = Unlimited
         uint40 perfExecution;//counting only when completed correctly
         uint8 strike;
-        uint8 code;
+        uint16 code;
         bool initExecution;
     }
 
@@ -43,7 +43,7 @@ contract NDCA {
         uint40 reqExecution;
         uint40 perfExecution;
         uint8 strike;
-        uint8 code;
+        uint16 code;
         bool allowOK;
         bool balanceOK;
     }
@@ -63,7 +63,7 @@ contract NDCA {
     event DCACreated(uint40 positionId, address owner);
     event DCAClosed(uint40 positionId, address owner);
     event DCASkipExe(uint40 positionId, address owner, uint40 _nextExecution);
-    event DCAExecuted(uint40 positionId, address indexed reciever, uint256 chainId, uint256 amount, bool ibEnable, uint8 code);
+    event DCAExecuted(uint40 positionId, address indexed reciever, uint256 chainId, uint256 amount, bool ibEnable, uint16 code);
     event DCAError(uint40 positionId, address indexed owner, uint8 strike);
 
     constructor(address _NRouter, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau){
@@ -160,13 +160,25 @@ contract NDCA {
     }
 
 //Router
+
+
+    function _initExecution(uint40 _dcaId) internal {
+        require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
+        require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
+        if(!DCAs[_dcaId].initExecution){
+            DCAs[_dcaId].initExecution = true;
+            ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(DCAs[_dcaId].owner, NROUTER, DCAs[_dcaId].srcAmount);
+        }
+    }
+
 // need to be called after deposit for IB and then call historian
 // TO ADD EVENT TO HAVE CLEAR VIEW OF EXECUTION FOR THE USER
 
-    function _updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint8 _code, uint256 _averagePrice) internal returns (bool toBeStored, uint8 reason){
+    function _updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice, bool _internalError) internal returns (bool toBeStored, uint8 reason){
         require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
         require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
-        DCAs[_dcaId].nextExecution += (DCAs[_dcaId].tau * TIME_BASE);
+        uint40 actualtime = (block.timestamp - DCAs[_dcaId].nextExecution) >= TIME_BASE ? uint40(block.timestamp) : DCAs[_dcaId].nextExecution;
+        DCAs[_dcaId].nextExecution =  actualtime + (DCAs[_dcaId].tau * TIME_BASE);
         DCAs[_dcaId].code = _code;
         if(_code == 200){
             DCAs[_dcaId].initExecution = false;
@@ -180,7 +192,7 @@ contract NDCA {
         }else{
             if(DCAs[_dcaId].initExecution){
                 DCAs[_dcaId].initExecution = false;
-                _refund(DCAs[_dcaId].chainId, DCAs[_dcaId].srcToken, DCAs[_dcaId].owner, DCAs[_dcaId].srcAmount);
+                _refund(_internalError, DCAs[_dcaId].srcToken, DCAs[_dcaId].owner, DCAs[_dcaId].srcAmount);
             }
             unchecked {
                 DCAs[_dcaId].strike ++;
@@ -192,15 +204,6 @@ contract NDCA {
             _closeDCA(DCAs[_dcaId].owner, DCAs[_dcaId].srcToken, DCAs[_dcaId].chainId, DCAs[_dcaId].destToken, DCAs[_dcaId].ibStrategy);
             toBeStored = true;
             if(DCAs[_dcaId].strike >= 2){reason = 2;}
-        }
-    }
-
-    function _initExecution(uint40 _dcaId) internal {
-        require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
-        require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
-        if(!DCAs[_dcaId].initExecution){
-            DCAs[_dcaId].initExecution = true;
-            ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(DCAs[_dcaId].owner, NROUTER, DCAs[_dcaId].srcAmount);
         }
     }
 
@@ -287,8 +290,8 @@ contract NDCA {
     ) private pure returns (bytes32){
         return keccak256(abi.encodePacked(_user, _srcToken, _chainId, _destToken, _ibStrategy));
     }
-    function _refund(uint256 _chainId, address _token, address _user, uint256 _amount) private {
-        if(_chainId == block.chainid){
+    function _refund(bool _internalError, address _token, address _user, uint256 _amount) private {
+        if(_internalError){
             ERC20(_token).safeTransfer(_user, _amount);
         }else{
             ERC20(_token).safeTransferFrom(NROUTER, _user, _amount);
