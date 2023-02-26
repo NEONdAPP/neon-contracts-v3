@@ -33,8 +33,8 @@ contract TestNDCA is NDCA {
         _skipNextExecution(_user, _srcToken, _chainId, _destToken, _ibStrategy);
     }
 
-    function checkAllowance(address _user, address _srcToken, uint256 _srcAmount) public view returns (bool allowOk, bool increaseAllow, bool maxAllow, uint256 allowanceDCA){
-        return _checkAllowance(_user, _srcToken, _srcAmount);
+    function checkAllowance(address _user, address _srcToken, uint256 _srcAmount, uint40 _reqExecution) public view returns (bool allowOk, bool increase, uint256 allowanceToAdd,  uint256 allowanceDCA){
+        return _checkAllowance(_user, _srcToken, _srcAmount, _reqExecution);
     }
 
     function detailDCA(uint40 _dcaId, address _user) public view returns (dcaDetail memory){
@@ -42,16 +42,16 @@ contract TestNDCA is NDCA {
     }
 
     //Router
-    function updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice, bool _internalError) public returns (bool toBeStored, uint8 reason){
-        return _updateDCA(_dcaId, _destTokenAmount, _code, _averagePrice, _internalError);
+    function updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice, bool _ibError) public returns (bool toBeStored, uint8 reason){
+        return _updateDCA(_dcaId, _destTokenAmount, _code, _averagePrice, _ibError);
     }
 
     function initExecution(uint40 _dcaId) public {
         _initExecution(_dcaId);
     }
 
-    function precheck(uint40 _dcaId) public view returns (bool){
-        return _precheck(_dcaId);
+    function preCheck(uint40 _dcaId) public view returns (bool){
+        return _preCheck(_dcaId);
     }
 
     function check(uint40 _dcaId) public view returns (bool exe, bool allowOk, bool balanceOk){
@@ -59,13 +59,13 @@ contract TestNDCA is NDCA {
     }
 
     function dataDCA(uint40 _dcaId) public view returns (
-        address _reciever,
-        address _srcToken,
-        uint8 _srcDecimals,
-        uint256 _chainId,
-        address _destToken,
-        uint8 _destDecimals,
-        uint256 _srcAmount
+        address reciever,
+        address srcToken,
+        uint8 srcDecimals,
+        uint256 chainId,
+        address destToken,
+        uint8 destDecimals,
+        uint256 srcAmount
     ){
         return _dataDCA(_dcaId);
     }

@@ -4,6 +4,12 @@ pragma solidity 0.8.17;
 import {ERC20} from "./lib/ERC20.sol";
 import {SafeERC20} from "./utils/SafeERC20.sol";
 
+/**
+ * @author  Hyper0x0 for NEON Protocol.
+ * @title   NDCA.
+ * @dev     All internal must be used as an abstract contract.
+ * @notice  This contract manages DCAs, from creation to execution.
+ */
 contract NDCA {
     using SafeERC20 for ERC20;
 
@@ -56,8 +62,8 @@ contract NDCA {
 
     uint8 immutable MIN_TAU;
     uint8 immutable MAX_TAU;
-    uint24 immutable TIME_BASE;//86400
-    uint256 immutable public DEFAULT_APPROVAL; //150000000000000000000 ??
+    uint24 immutable TIME_BASE;
+    uint256 immutable public DEFAULT_APPROVAL;
     address immutable public NROUTER;
 
     event DCACreated(uint40 positionId, address owner);
@@ -69,13 +75,28 @@ contract NDCA {
     constructor(address _NRouter, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau){
         NROUTER = _NRouter;
         DEFAULT_APPROVAL = _defaultApproval;
-        TIME_BASE = _timeBase;//Day to Seconds
+        TIME_BASE = _timeBase;
         MIN_TAU = _minTau;
         MAX_TAU = _maxTau;
     }
 
     /* WRITE METHODS*/
     /* INTERNAL */
+    /**
+     * @notice  DCA creation.
+     * @dev     startegies are available only in the current chain.
+     * @param   _user  DCA owner.
+     * @param   _reciever  Address where will recieve token / receipt.
+     * @param   _srcToken  Source token address.
+     * @param   _chainId  Chain id for the destination token.
+     * @param   _destToken  Destination token address.
+     * @param   _destDecimals  Destination token decimals.
+     * @param   _ibStrategy  Strategy address.
+     * @param   _srcAmount  Amount to invest into the DCA.
+     * @param   _tau  Frequency of invest.
+     * @param   _reqExecution  Required execution, if 0 is unlimited.
+     * @param   _nowFirstExecution  if true, the first execution is brought forward to the current day.
+     */
     function _createDCA(
         address _user,
         address _reciever,
@@ -94,7 +115,7 @@ contract NDCA {
         require(_tau >= MIN_TAU && _tau <= MAX_TAU, "NDCA: Tau out of limits");
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
         require(DCAs[dcaPosition[uniqueId]].owner == address(0), "NDCA: Already created with this pair");
-        uint256 allowanceToAdd = _reqExecution == 0 ? DEFAULT_APPROVAL * 10 ** ERC20(_srcToken).decimals() : _srcAmount * _reqExecution;
+        uint256 allowanceToAdd = _reqExecution == 0 ? (DEFAULT_APPROVAL * 10 ** ERC20(_srcToken).decimals()) : (_srcAmount * _reqExecution);
         address owner = _user;//too avoid "Stack too Deep"
         userAllowance[owner][_srcToken] = (userAllowance[owner][_srcToken] + allowanceToAdd) < type(uint256).max ? (userAllowance[owner][_srcToken] + allowanceToAdd) : type(uint256).max;
         require(ERC20(_srcToken).allowance(owner, address(this)) >= userAllowance[owner][_srcToken],"NDCA: Insufficient approved token");
@@ -129,12 +150,19 @@ contract NDCA {
         }
         emit DCACreated(dcaPosition[uniqueId], _user);
     }
-
+    /**
+     * @notice  Close DCA.
+     * @param   _user  DCA owner.
+     * @param   _srcToken  Source token address.
+     * @param   _chainId  Chain id for the destination token.
+     * @param   _destToken  Destination token address.
+     * @param   _ibStrategy  Strategy address.
+     */
     function _closeDCA(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) internal {
         require(_user != address(0), "NDCA: Null address not allowed");
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
         require(DCAs[dcaPosition[uniqueId]].owner != address(0), "NDCA: Already closed");
-        DCAs[dcaPosition[uniqueId]].owner == address(0);
+        DCAs[dcaPosition[uniqueId]].owner = address(0);
         uint256 allowanceToRemove;
         if(DCAs[dcaPosition[uniqueId]].reqExecution == 0){
             allowanceToRemove = ((DEFAULT_APPROVAL * 10 ** ERC20(_srcToken).decimals()) - (DCAs[dcaPosition[uniqueId]].srcAmount * DCAs[dcaPosition[uniqueId]].perfExecution));
@@ -147,8 +175,14 @@ contract NDCA {
         }
         emit DCAClosed(dcaPosition[uniqueId], _user);
     }
-
-//Frontend
+    /**
+     * @notice  Skip next execution.
+     * @param   _user  DCA owner.
+     * @param   _srcToken  Source token address.
+     * @param   _chainId  Chain id for the destination token.
+     * @param   _destToken  Destination token address.
+     * @param   _ibStrategy  Strategy address.
+     */
     function _skipNextExecution(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) internal {
         require(_user != address(0), "NDCA: Null address not allowed");
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
@@ -158,10 +192,10 @@ contract NDCA {
         }
         emit DCASkipExe(dcaPosition[uniqueId], _user, DCAs[dcaPosition[uniqueId]].nextExecution);
     }
-
-//Router
-
-
+    /**
+     * @notice  Initialize DCA execution to collect funds.
+     * @param   _dcaId  Id of the DCA.
+     */
     function _initExecution(uint40 _dcaId) internal {
         require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
         require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
@@ -170,14 +204,20 @@ contract NDCA {
             ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(DCAs[_dcaId].owner, NROUTER, DCAs[_dcaId].srcAmount);
         }
     }
-
-// need to be called after deposit for IB and then call historian
-// TO ADD EVENT TO HAVE CLEAR VIEW OF EXECUTION FOR THE USER
-
-    function _updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice, bool _internalError) internal returns (bool toBeStored, uint8 reason){
+    /**
+     * @notice  Complete DCA execution, update values, handle refund and auto close.
+     * @param   _dcaId  Id of the DCA.
+     * @param   _destTokenAmount  Token earned with the DCA.
+     * @param   _code  Execution code.
+     * @param   _averagePrice  Single token purchase price USD.
+     * @param   _ibError  True if there was an internal error.
+     * @return  toBeStored  True if need to store the DCA.
+     * @return  reason  Reason for the closure of the DCA.
+     */
+    function _updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice, bool _ibError) internal returns (bool toBeStored, uint8 reason){
         require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
         require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
-        uint40 actualtime = (block.timestamp - DCAs[_dcaId].nextExecution) >= TIME_BASE ? uint40(block.timestamp) : DCAs[_dcaId].nextExecution;
+        uint40 actualtime = (block.timestamp - DCAs[_dcaId].nextExecution) >= TIME_BASE ? (uint40(block.timestamp) - 3600) : DCAs[_dcaId].nextExecution;
         DCAs[_dcaId].nextExecution =  actualtime + (DCAs[_dcaId].tau * TIME_BASE);
         DCAs[_dcaId].code = _code;
         if(_code == 200){
@@ -188,11 +228,13 @@ contract NDCA {
                 DCAs[_dcaId].perfExecution ++;
                 DCAs[_dcaId].averagePrice = DCAs[_dcaId].averagePrice == 0 ? _averagePrice : ((DCAs[_dcaId].averagePrice + _averagePrice) / 2);
             }
+            //In case of ibStrategy not selected, send token earned to reciever
+            _sendEarnings(DCAs[_dcaId].destToken, DCAs[_dcaId].reciever, _destTokenAmount, DCAs[_dcaId].ibStrategy, DCAs[_dcaId].chainId);
             emit DCAExecuted(_dcaId, DCAs[_dcaId].reciever, DCAs[_dcaId].chainId, _destTokenAmount, (DCAs[_dcaId].ibStrategy != address(0)), _code);
         }else{
             if(DCAs[_dcaId].initExecution){
                 DCAs[_dcaId].initExecution = false;
-                _refund(_internalError, DCAs[_dcaId].srcToken, DCAs[_dcaId].owner, DCAs[_dcaId].srcAmount);
+                _refund(_ibError, DCAs[_dcaId].srcToken, DCAs[_dcaId].owner, DCAs[_dcaId].srcAmount);
             }
             unchecked {
                 DCAs[_dcaId].strike ++;
@@ -206,56 +248,91 @@ contract NDCA {
             if(DCAs[_dcaId].strike >= 2){reason = 2;}
         }
     }
-
     /* VIEW METHODS*/
     /* INTERNAL */
-//Frontend
-    function _checkAllowance(address _user, address _srcToken, uint256 _srcAmount) internal view returns (bool allowOk, bool increaseAllow, bool maxAllow, uint256 allowanceDCA){
+    /**
+     * @notice  Manages dynamic approval.
+     * @param   _user  DCA owner.
+     * @param   _srcToken  Source token address.
+     * @param   _srcAmount  Amount to invest into the DCA.
+     * @param   _reqExecution  Required execution, if 0 is unlimited.
+     * @return  allowOk  True if allowance is OK.
+     * @return  increase  True if need to increaseAllowance or false if need to approve.
+     * @return  allowanceToAdd  Value to approve from ERC20 approval.
+     * @return  allowanceDCA  Total value approved into the DCA contract.
+     */
+    function _checkAllowance(address _user, address _srcToken, uint256 _srcAmount, uint40 _reqExecution) internal view returns (bool allowOk, bool increase, uint256 allowanceToAdd, uint256 allowanceDCA){
         uint256 ERC20Allowance = ERC20(_srcToken).allowance(_user, address(this));
-        if(ERC20Allowance >= userAllowance[_user][_srcToken] && (userAllowance[_user][_srcToken] + _srcAmount) < type(uint256).max){
-            if((ERC20Allowance - userAllowance[_user][_srcToken]) >= _srcAmount){
+        uint256 totalAmount = _reqExecution == 0 ? (DEFAULT_APPROVAL * 10 ** ERC20(_srcToken).decimals()) : (_srcAmount * _reqExecution);
+        if(ERC20Allowance >= userAllowance[_user][_srcToken] && (userAllowance[_user][_srcToken] + totalAmount) < type(uint256).max){
+            if((ERC20Allowance - userAllowance[_user][_srcToken]) >= totalAmount){
                 allowOk = true;
             }else{
-                increaseAllow = true;
+                increase = true;
+                allowanceToAdd = totalAmount;
             }
+        }else{
+            bool maxAllow = (userAllowance[_user][_srcToken] + totalAmount) >= type(uint256).max;
+            allowanceToAdd = maxAllow ? type(uint256).max : (userAllowance[_user][_srcToken] + totalAmount);
         }
-        maxAllow = (userAllowance[_user][_srcToken] + _srcAmount) >= type(uint256).max;
         allowanceDCA = userAllowance[_user][_srcToken];
     }
-    //function to view Detail + data for router
-
-//Router
-    function _precheck(uint40 _dcaId) internal view returns (bool){
-        return (block.timestamp >= DCAs[_dcaId].nextExecution);
+    /**
+     * @notice  Check if a DCA should be executed.
+     * @param   _dcaId  Id of the DCA.
+     * @return  bool  True if need to be executed.
+     */
+    function _preCheck(uint40 _dcaId) internal view returns (bool){
+        return (block.timestamp >= DCAs[_dcaId].nextExecution && DCAs[_dcaId].nextExecution != 0);
     }
-
+    /**
+     * @notice  Check requirements for performing the DCA.
+     * @param   _dcaId  Id of the DCA.
+     * @return  exe  True if need to be executed.
+     * @return  allowOk  True if allowance is OK.
+     * @return  balanceOk  True if balance is OK.
+     */
     function _check(uint40 _dcaId) internal view returns (bool exe, bool allowOk, bool balanceOk){
-        exe = (block.timestamp >= DCAs[_dcaId].nextExecution);
-        allowOk = (ERC20(DCAs[_dcaId].srcToken).allowance(DCAs[_dcaId].owner, address(this)) >= DCAs[_dcaId].srcAmount);
-        balanceOk = (ERC20(DCAs[_dcaId].srcToken).balanceOf(DCAs[_dcaId].owner) >= DCAs[_dcaId].srcAmount);
+        exe = (block.timestamp >= DCAs[_dcaId].nextExecution && DCAs[_dcaId].nextExecution != 0);
+        if(exe){
+            allowOk = (ERC20(DCAs[_dcaId].srcToken).allowance(DCAs[_dcaId].owner, address(this)) >= DCAs[_dcaId].srcAmount);
+            balanceOk = (ERC20(DCAs[_dcaId].srcToken).balanceOf(DCAs[_dcaId].owner) >= DCAs[_dcaId].srcAmount);
+        }
     }
-
-
-//Router
+    /**
+     * @notice  Return data to execute the swap.
+     * @param   _dcaId  Id of the DCA.
+     * @return  reciever  Address where will recieve token / receipt.
+     * @return  srcToken  Source token address.
+     * @return  srcDecimals  Source token decimals.
+     * @return  chainId  Chain id for the destination token.
+     * @return  destToken  Destination token address.
+     * @return  destDecimals  Destination token decimals.
+     * @return  srcAmount  Amount to invest into the DCA.
+     */
     function _dataDCA(uint40 _dcaId) internal view returns (
-        address _reciever,
-        address _srcToken,
-        uint8 _srcDecimals,
-        uint256 _chainId,
-        address _destToken,
-        uint8 _destDecimals,
-        uint256 _srcAmount
+        address reciever,
+        address srcToken,
+        uint8 srcDecimals,
+        uint256 chainId,
+        address destToken,
+        uint8 destDecimals,
+        uint256 srcAmount
     ){
-        _reciever = DCAs[_dcaId].reciever;
-        _srcToken = DCAs[_dcaId].srcToken;
-        _srcDecimals = ERC20(DCAs[_dcaId].srcToken).decimals();
-        _chainId = DCAs[_dcaId].chainId;
-        _destToken = DCAs[_dcaId].destToken;
-        _destDecimals = DCAs[_dcaId].destDecimals;
-        _srcAmount = DCAs[_dcaId].srcAmount;
+        reciever = DCAs[_dcaId].reciever;
+        srcToken = DCAs[_dcaId].srcToken;
+        srcDecimals = ERC20(DCAs[_dcaId].srcToken).decimals();
+        chainId = DCAs[_dcaId].chainId;
+        destToken = DCAs[_dcaId].destToken;
+        destDecimals = DCAs[_dcaId].destDecimals;
+        srcAmount = DCAs[_dcaId].srcAmount;
     }
-
-//Frontend
+    /**
+     * @notice  Return data to display into the fronend.
+     * @param   _dcaId  Id of the DCA.
+     * @param   _user  DCA owner.
+     * @return  dcaDetail  DCA info data.
+     */
     function _detailDCA(uint40 _dcaId, address _user) internal view returns (dcaDetail memory){
         dcaDetail memory data;
         if(DCAs[_dcaId].owner == _user){
@@ -279,8 +356,16 @@ contract NDCA {
         }
         return data;
     }
-
     /* PRIVATE */
+    /**
+     * @notice  Generate unique Id.
+     * @param   _user  DCA owner.
+     * @param   _srcToken  Source token address.
+     * @param   _chainId  Chain id for the destination token.
+     * @param   _destToken  Destination token address.
+     * @param   _ibStrategy  Strategy address.
+     * @return  bytes32  Unique Hash id.
+     */
     function _getId(
         address _user,
         address _srcToken,
@@ -290,11 +375,33 @@ contract NDCA {
     ) private pure returns (bytes32){
         return keccak256(abi.encodePacked(_user, _srcToken, _chainId, _destToken, _ibStrategy));
     }
+    /**
+     * @notice  Manage refund in case of error.
+     * @dev     ibStartegy error from DCA contract, Swap error from Router .
+     * @param   _internalError  True if is internal the error.
+     * @param   _token  Token to be transfer.
+     * @param   _user  User to send token.
+     * @param   _amount  Amount of token.
+     */
     function _refund(bool _internalError, address _token, address _user, uint256 _amount) private {
         if(_internalError){
             ERC20(_token).safeTransfer(_user, _amount);
         }else{
             ERC20(_token).safeTransferFrom(NROUTER, _user, _amount);
+        }
+    }
+    /**
+     * @notice  Manage send of earnings.
+     * @dev     Only when Startegy isn't enable and it's in the current chain.
+     * @param   _token  Token to be transfer.
+     * @param   _user  User to send token.
+     * @param   _amount  Amount of token.
+     * @param   _strategy  Strategy Address.
+     * @param   _chainId  Current Chain Id.
+     */
+    function _sendEarnings(address _token, address _user,  uint256 _amount, address _strategy, uint256 _chainId) private {
+        if(_strategy == address(0) && _chainId == block.chainid){
+            ERC20(_token).safeTransfer(_user, _amount);
         }
     }
 }
