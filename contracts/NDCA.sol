@@ -54,15 +54,15 @@ contract NDCA {
         bool balanceOK;
     }
 
-    mapping (uint40 => dcaData) DCAs;
-    mapping (bytes32 => uint40) dcaPosition;
-    mapping (address => mapping (address => uint256)) userAllowance;
+    mapping (uint40 => dcaData) private DCAs;
+    mapping (bytes32 => uint40) private dcaPosition;
+    mapping (address => mapping (address => uint256)) private userAllowance;
     uint40 public activeDCAs;
     uint40 public totalPositions;
 
-    uint8 immutable MIN_TAU;
-    uint8 immutable MAX_TAU;
-    uint24 immutable TIME_BASE;
+    uint8 immutable private MIN_TAU;
+    uint8 immutable private MAX_TAU;
+    uint24 immutable private TIME_BASE;
     uint256 immutable public DEFAULT_APPROVAL;
     address immutable public NROUTER;
 

@@ -17,17 +17,17 @@ contract NPairs is Ownable {
     }
 
     //Token = Active
-    mapping (address => bool) srcToken;
+    mapping (address => bool) private srcToken;
     //ChainId => Token = Struct (Normal + CC)
-    mapping (uint256 => mapping (address => token)) destToken;
+    mapping (uint256 => mapping (address => token)) private destToken;
     //Strategy Address => Token = Active
-    mapping (address => mapping (address => bool)) ibStrategy;
+    mapping (address => mapping (address => bool)) private ibStrategy;
     //srcToken => chainId => destToken = Active
-    mapping (address => mapping (uint256 => mapping (address => bool))) NotAwailablePair;
+    mapping (address => mapping (uint256 => mapping (address => bool))) private NotAwailablePair;
 
-    uint16 totStrategy;
-    uint16 totDest;
-    uint16 totSrc;
+    uint16 private totStrategy;
+    uint16 private totDest;
+    uint16 private totSrc;
 
     event SrcTokenListed(address indexed token, string symbol);
     event DestTokenListed(uint256 chainId, address indexed token, string symbol);

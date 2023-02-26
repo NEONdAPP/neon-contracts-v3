@@ -23,7 +23,7 @@ contract NHistorian {
         uint8 reason; // (0 = Completed, 1 = User Close DCA, 2 = Strike Reached...)
     }
 
-    mapping (address => data) database;
+    mapping (address => data) private database;
     
     /* WRITE METHODS*/
     /* INTERNAL */
