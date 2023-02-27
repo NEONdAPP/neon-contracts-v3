@@ -9,7 +9,7 @@ contract TestNHistorian is NHistorian {
         _storeDCA(_userAddress, _struct);
     }
 
-    function gestData(address _userAddress) external view returns(histDetail[] memory, uint8 nBatchData){
+    function getData(address _userAddress) external view returns(histDetail[] memory, uint8 nBatchData){
         return(_getHistoryDataBatch(_userAddress));
     }
 }

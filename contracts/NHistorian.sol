@@ -19,7 +19,8 @@ contract NHistorian {
         address srcToken;
         uint256 chainId;
         address destToken;
-        uint256 closedDcaTime;
+        address ibStrategy;
+        uint40 closedDcaTime;
         uint8 reason; // (0 = Completed, 1 = User Close DCA, 2 = Strike Reached...)
     }
 
@@ -40,7 +41,8 @@ contract NHistorian {
         database[_userAddress].userData[bufferId].srcToken = _struct.srcToken;
         database[_userAddress].userData[bufferId].chainId = _struct.chainId;
         database[_userAddress].userData[bufferId].destToken = _struct.destToken;
-        database[_userAddress].userData[bufferId].closedDcaTime = _struct.closedDcaTime > 0 ? _struct.closedDcaTime : block.timestamp;//Manage case of DCA closed without exe
+        database[_userAddress].userData[bufferId].ibStrategy = _struct.ibStrategy;
+        database[_userAddress].userData[bufferId].closedDcaTime = _struct.closedDcaTime > 0 ? _struct.closedDcaTime : uint40(block.timestamp);//Manage case of DCA closed without exe
         database[_userAddress].userData[bufferId].reason = _struct.reason;
         if(database[_userAddress].totStored < 200){
             unchecked {
