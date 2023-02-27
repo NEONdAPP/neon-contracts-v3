@@ -228,13 +228,11 @@ contract NDCA {
                 DCAs[_dcaId].perfExecution ++;
                 DCAs[_dcaId].averagePrice = DCAs[_dcaId].averagePrice == 0 ? _averagePrice : ((DCAs[_dcaId].averagePrice + _averagePrice) / 2);
             }
-            //In case of ibStrategy not selected, send token earned to reciever
-            _sendEarnings(DCAs[_dcaId].destToken, DCAs[_dcaId].reciever, _destTokenAmount, DCAs[_dcaId].ibStrategy, DCAs[_dcaId].chainId);
             emit DCAExecuted(_dcaId, DCAs[_dcaId].reciever, DCAs[_dcaId].chainId, _destTokenAmount, (DCAs[_dcaId].ibStrategy != address(0)), _code);
         }else{
             if(DCAs[_dcaId].initExecution){
                 DCAs[_dcaId].initExecution = false;
-                _refund(_ibError, DCAs[_dcaId].srcToken, DCAs[_dcaId].owner, DCAs[_dcaId].srcAmount);
+                _refund(_ibError, _dcaId, _destTokenAmount);
             }
             unchecked {
                 DCAs[_dcaId].strike ++;
@@ -377,31 +375,16 @@ contract NDCA {
     }
     /**
      * @notice  Manage refund in case of error.
-     * @dev     ibStartegy error from DCA contract, Swap error from Router .
+     * @dev     ibStartegy error from DCA contract return destToken, Swap error from Router return srcToken.
      * @param   _internalError  True if is internal the error.
-     * @param   _token  Token to be transfer.
-     * @param   _user  User to send token.
-     * @param   _amount  Amount of token.
+     * @param   _dcaId  Id of the DCA.
+     * @param   _destTokenAmount  Token earned with the DCA.
      */
-    function _refund(bool _internalError, address _token, address _user, uint256 _amount) private {
+    function _refund(bool _internalError, uint40 _dcaId, uint256 _destTokenAmount) private {
         if(_internalError){
-            ERC20(_token).safeTransfer(_user, _amount);
+            ERC20(DCAs[_dcaId].destToken).safeTransfer(DCAs[_dcaId].owner, _destTokenAmount);
         }else{
-            ERC20(_token).safeTransferFrom(NROUTER, _user, _amount);
-        }
-    }
-    /**
-     * @notice  Manage send of earnings.
-     * @dev     Only when Startegy isn't enable and it's in the current chain.
-     * @param   _token  Token to be transfer.
-     * @param   _user  User to send token.
-     * @param   _amount  Amount of token.
-     * @param   _strategy  Strategy Address.
-     * @param   _chainId  Current Chain Id.
-     */
-    function _sendEarnings(address _token, address _user,  uint256 _amount, address _strategy, uint256 _chainId) private {
-        if(_strategy == address(0) && _chainId == block.chainid){
-            ERC20(_token).safeTransfer(_user, _amount);
+            ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(NROUTER, DCAs[_dcaId].owner, DCAs[_dcaId].srcAmount);
         }
     }
 }

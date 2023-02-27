@@ -976,7 +976,7 @@ describe("NDCA Testing", function () {
             const { contract, owner, params, neonToken1} = await loadFixture(createDCA);
             const data = {
                 dcaId: await contract.connect(owner).totalPositions(),
-                destTokenAmount: ethers.utils.parseUnits(String(999)),
+                destTokenAmount: ethers.utils.parseUnits(String(200)),
                 code: 400,
                 averagePrice: ethers.BigNumber.from(String(1000000)),
                 internalError: true
@@ -1178,58 +1178,6 @@ describe("NDCA Testing", function () {
             var result = await contract.connect(owner).detailDCA(1, params.user);
             expect(result.destTokenEarned).to.equal(data.destTokenAmount.mul(2));
             expect(result.averagePrice).to.equal(data.averagePrice.add(data.averagePrice).div(2));
-        });
-        it("Should send earning in case of Strategy not able & same chain", async function () {
-            const { contract, owner, addr1 } = await loadFixture(deployContract);
-            const { neonToken1 } = await loadFixture(deployNeonToken1);
-            const params = {
-                user: owner.address,
-                reciever: owner.address,
-                srcToken: neonToken1.address,
-                chainId: contract.deployTransaction.chainId,
-                destToken: neonToken1.address,
-                destDecimals: 18,
-                ibStrategy: ethers.constants.AddressZero,
-                srcAmount: ethers.utils.parseUnits(String(200)),
-                tau: 10,
-                reqExecution: 0,
-                nowFirstExecution: true
-            };
-            const approvalAmount = await contract.connect(owner).DEFAULT_APPROVAL();
-            await neonToken1.connect(owner).approve(contract.address, ethers.utils.parseUnits(String(approvalAmount)));
-            await contract.connect(owner).createDCA(
-                params.user,
-                params.reciever,
-                params.srcToken,
-                params.chainId,
-                params.destToken,
-                params.destDecimals,
-                params.ibStrategy,
-                params.srcAmount,
-                params.tau,
-                params.reqExecution,
-                params.nowFirstExecution
-            );
-            const initBalance = await neonToken1.connect(owner).balanceOf(owner.address);
-            //Simulate router send destToken to the contract
-            await neonToken1.connect(owner).transfer(contract.address, ethers.utils.parseUnits(String(200)));
-            const data = {
-                dcaId: await contract.connect(owner).totalPositions(),
-                destTokenAmount: ethers.utils.parseUnits(String(200)),
-                code: 200,
-                averagePrice: ethers.BigNumber.from(String(1000000)),
-                internalError: false
-            };
-            //Execution
-            await contract.connect(owner).updateDCA(
-                data.dcaId,
-                data.destTokenAmount,
-                data.code,
-                data.averagePrice,
-                data.internalError
-                )
-            const finalBalance = await neonToken1.connect(owner).balanceOf(owner.address);
-            expect(initBalance).to.equal(finalBalance);
         });
     });
 
