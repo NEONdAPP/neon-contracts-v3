@@ -43,7 +43,6 @@ contract NPairs is Ownable {
         require(!srcToken[_token], "NPairs: Token already listed");
         _listSrcToken(_token);
     }
-
     /**
      * @notice  List destination token that will be recieved.
      * @dev     _decimals & _symbol will be need if chain id is different from the current one.
@@ -58,7 +57,6 @@ contract NPairs is Ownable {
         require(!destToken[_chainId][_token].active, "NPairs: Token already listed");
         _listDestToken(_chainId, _token, _decimals, _symbol);
     }
-
     /**
      * @notice  List interest bearing strategy contract.
      * @dev     Available only in the current chain.
@@ -71,7 +69,6 @@ contract NPairs is Ownable {
         require(!ibStrategy[_token][_strategy], "NPairs: Strategy already listed");
         _listIbStrategy(_token, _strategy);
     }
-
     /**
      * @notice  Blacklist combination of tokens.
      * @param   _srcToken  Source token address.
@@ -84,7 +81,36 @@ contract NPairs is Ownable {
         require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
         NotAwailablePair[_srcToken][_chainId][_destToken] = !NotAwailablePair[_srcToken][_chainId][_destToken];
     }
-
+    /* VIEW METHODS */
+    /**
+     * @notice  Return total tokens and strategy listed.
+     */
+    function totalListed() external view returns(uint16 totSrcToken, uint16 totDestToken, uint16 totstrategy){
+        return(totSrc, totDest, totStrategy);
+    }
+    /**
+     * @notice  Return strategy status.
+     * @dev     Available only in the current chain.
+     * @param   _token  Reference token address for the strategy.
+     * @param   _strategy  Strategy address.
+     * @return  true if strategy is listed.
+     */
+    function isIbStrategyListed(address _token, address _strategy) public view returns(bool){
+        return ibStrategy[_token][_strategy];
+    }
+    /**
+     * @notice  Return status of selected pair.
+     * @param   _srcToken  Source token address.
+     * @param   _chainId  Chain id for the destination token.
+     * @param   _destToken  Destination token address.
+     * @return  true if pair is available.
+     */
+    function isPairAvailable(address _srcToken, uint256 _chainId, address _destToken) public view returns(bool){
+        require(_srcToken != address(0) && _destToken != address(0), "NPairs: Null address not allowed");
+        require(srcToken[_srcToken], "NPairs: Src.Token not listed");
+        require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
+        return !(NotAwailablePair[_srcToken][_chainId][_destToken]);
+    }
     /* PRIVATE */
     function _listSrcToken(address _token) private {
         srcToken[_token] = true;
@@ -115,57 +141,5 @@ contract NPairs is Ownable {
             totStrategy ++;
         }
         emit IbStrategyListed(_token, _strategy);
-    }
-    /* VIEW METHODS */
-
-    /**
-     * @notice  Return total tokens and strategy listed.
-     */
-    function totalListed() external view returns(uint16 totSrcToken, uint16 totDestToken, uint16 totstrategy){
-        return(totSrc, totDest, totStrategy);
-    }
-
-    /**
-     * @notice  Return source token status.
-     * @param   _token  Token address.
-     * @return  true if source token is listed.
-     */
-    function isSrcTokenListed(address _token) external view returns(bool){
-        return srcToken[_token];
-    }
-
-    /**
-     * @notice  Return destination token status.
-     * @param   _chainId  Chain id for the token.
-     * @param   _token  Token Address.
-     * @return  true if destination token is listed.
-     */
-    function isDestTokenListed(uint256 _chainId, address _token) external view returns(bool, uint8 decimals){
-        return (destToken[_chainId][_token].active, destToken[_chainId][_token].decimals);
-    }
-
-    /**
-     * @notice  Return strategy status.
-     * @dev     Available only in the current chain.
-     * @param   _token  Reference token address for the strategy.
-     * @param   _strategy  Strategy address.
-     * @return  true if strategy is listed.
-     */
-    function isIbStrategyListed(address _token, address _strategy) public view returns(bool){
-        return ibStrategy[_token][_strategy];
-    }
-
-    /**
-     * @notice  Return status of selected pair.
-     * @param   _srcToken  Source token address.
-     * @param   _chainId  Chain id for the destination token.
-     * @param   _destToken  Destination token address.
-     * @return  true if pair is available.
-     */
-    function isPairAvailable(address _srcToken, uint256 _chainId, address _destToken) public view returns(bool){
-        require(_srcToken != address(0) && _destToken != address(0), "NPairs: Null address not allowed");
-        require(srcToken[_srcToken], "NPairs: Src.Token not listed");
-        require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
-        return !(NotAwailablePair[_srcToken][_chainId][_destToken]);
     }
 }

@@ -5,9 +5,9 @@ const { ethers } = require("hardhat");
 
 describe("NDCA Testing", function () {
     async function deployContract(){
-        const contractFactory = await ethers.getContractFactory("TestNDCA");
+        const contractFactory = await ethers.getContractFactory("NDCA");
         const [owner, addr1, addr2] = await ethers.getSigners();
-        const contract = await contractFactory.deploy(addr1.address, 15000000, 86400, 1, 30);
+        const contract = await contractFactory.deploy(owner.address, addr1.address, 15000000, 86400, 1, 30);
         await contract.deployed();
         return {contractFactory, contract, owner, addr1, addr2};
     }
@@ -59,8 +59,9 @@ describe("NDCA Testing", function () {
 
     describe("Deployment", function () {
         it("Should set the right parameter", async function () {
-            const { contract, addr1 } = await loadFixture(deployContract);
+            const { contract, owner, addr1 } = await loadFixture(deployContract);
 
+            expect(await contract.NCORE()).to.equal(owner.address);
             expect(await contract.NROUTER()).to.equal(addr1.address);
             expect(await contract.DEFAULT_APPROVAL()).to.equal(15000000);
         });
@@ -211,6 +212,41 @@ describe("NDCA Testing", function () {
                     params.nowFirstExecution
                     )
             ).to.be.revertedWith("NDCA: Already created with this pair");
+        });
+
+        it("Should fail if function isn't called by NCore", async function () {
+            const { contract, owner, addr1 } = await loadFixture(deployContract);
+            const { neonToken1 } = await loadFixture(deployNeonToken1);
+            const params = {
+                user: owner.address,
+                reciever: owner.address,
+                srcToken: neonToken1.address,
+                chainId: contract.deployTransaction.chainId,
+                destToken: neonToken1.address,
+                destDecimals: 18,
+                ibStrategy: addr1.address,
+                srcAmount: ethers.utils.parseUnits(String(200)),
+                tau: 10,
+                reqExecution: 1,
+                nowFirstExecution: true
+            };
+            await neonToken1.connect(owner).approve(contract.address, (params.srcAmount.mul(params.reqExecution)));
+            
+            await expect(
+                contract.connect(addr1).createDCA(
+                    params.user,
+                    params.reciever,
+                    params.srcToken,
+                    params.chainId,
+                    params.destToken,
+                    params.destDecimals,
+                    params.ibStrategy,
+                    params.srcAmount,
+                    params.tau,
+                    params.reqExecution,
+                    params.nowFirstExecution
+                    )
+            ).to.be.revertedWith("NDCA: Only Core is allowed");
         });
 
         it("Should fail if User doesn't have balance", async function () {
@@ -441,8 +477,8 @@ describe("NDCA Testing", function () {
             expect(result.perfExecution).to.equal(0);
             expect(result.strike).to.equal(0);
             expect(result.code).to.equal(0);
-            expect(result.allowOK).to.equal(true);
-            expect(result.balanceOK).to.equal(true);
+            expect(result.allowOk).to.equal(true);
+            expect(result.balanceOk).to.equal(true);
         });
 
         it("Should assign actual time if DCA will be execute now", async function () {
@@ -1546,6 +1582,56 @@ describe("NDCA Testing", function () {
                 expect(result.increase).to.equal(true);
                 expect(result.allowanceToAdd).to.equal(ethers.utils.parseUnits(String(approvalAmount)));         
                 expect(result.allowanceDCA).to.equal(ethers.utils.parseUnits(String(approvalAmount)));
+            });
+        });
+    describe("Function 'checkAvailability'", function () {
+        //Correct Events
+            it("Should return true when DCA is available to be created", async function () {
+                const { contract, owner, addr1} = await loadFixture(deployContract);
+                const { neonToken1 } = await loadFixture(deployNeonToken1);
+                const params = {
+                    user: owner.address,
+                    reciever: owner.address,
+                    srcToken: neonToken1.address,
+                    chainId: contract.deployTransaction.chainId,
+                    destToken: neonToken1.address,
+                    destDecimals: 18,
+                    ibStrategy: addr1.address,
+                    srcAmount: ethers.utils.parseUnits(String(200)),
+                    tau: 10,
+                    reqExecution: 1,
+                    nowFirstExecution: true
+                };
+                const result = await contract.connect(owner).checkAvailability(params.user, params.srcToken, params.chainId, params.destToken, params.ibStrategy);
+                expect(result).to.equal(true);              
+            });
+            it("Should return false when DCA is already created", async function () {
+                const { contract, owner, params} = await loadFixture(createDCA);
+                const result = await contract.connect(owner).checkAvailability(params.user, params.srcToken, params.chainId, params.destToken, params.ibStrategy);
+                expect(result).to.equal(false);              
+            });
+        });
+    describe("Function 'getPermit'", function () {
+        //Correct Events
+            it("Should approve correct amount for NCore", async function () {
+                const { contract, owner, addr1} = await loadFixture(deployContract);
+                const { neonToken1 } = await loadFixture(deployNeonToken1);
+                const params = {
+                    user: owner.address,
+                    reciever: owner.address,
+                    srcToken: neonToken1.address,
+                    chainId: contract.deployTransaction.chainId,
+                    destToken: neonToken1.address,
+                    destDecimals: 18,
+                    ibStrategy: addr1.address,
+                    srcAmount: ethers.utils.parseUnits(String(200)),
+                    tau: 10,
+                    reqExecution: 1,
+                    nowFirstExecution: true
+                };
+                await contract.connect(owner).getPermit(params.srcToken, params.srcAmount);
+                const result = await neonToken1.connect(owner).allowance(contract.address, owner.address);
+                expect(result).to.equal(params.srcAmount);              
             });
         });
 });

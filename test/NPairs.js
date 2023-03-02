@@ -83,24 +83,6 @@ describe("NPairs Testing", function () {
 
             expect(result[0]).to.equal(2);
         });
-
-        it("Should return 'true' if Token is listed", async function () {
-            const { contract, owner } = await loadFixture(deployContract);
-            const { token1 } = await loadFixture(deployToken1);
-            await contract.connect(owner).listSrcToken(token1.address);
-
-            expect(
-                await contract.connect(owner).isSrcTokenListed(token1.address)
-            ).to.equal(true);
-        });
-
-        it("Should return 'false' if Token isn't listed", async function () {
-            const { contract, owner } = await loadFixture(deployContract);
-
-            expect(
-                await contract.connect(owner).isSrcTokenListed(owner.address)
-            ).to.equal(false);
-        });
     });
 
     describe("Function 'listDestToken'", function () {
@@ -173,44 +155,6 @@ describe("NPairs Testing", function () {
             var result = await contract.connect(owner).totalListed();
 
             expect(result[1]).to.equal(3);
-        });
-
-        it("Should return 'true' & correct Decimals if Token is listed", async function () {
-            const { contract, owner } = await loadFixture(deployContract);
-            const { token1 } = await loadFixture(deployToken1);
-            await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
-            var result = await contract.connect(owner).isDestTokenListed(1, token1.address);
-
-            expect(result[0]).to.equal(true);
-            expect(result[1]).to.equal(18);
-        });
-
-        it("Should return Decimals & Symbol from ERC20 if in the current chain", async function () {
-            const { contract, owner } = await loadFixture(deployContract);
-            const { token1 } = await loadFixture(deployToken1);
-
-            await expect(contract.connect(owner).listDestToken(contract.deployTransaction.chainId, token1.address, 0, "-"))
-            .to.emit(contract, "DestTokenListed")
-            .withArgs(31337, token1.address, await token1.symbol());
-
-            var result = await contract.connect(owner).isDestTokenListed(contract.deployTransaction.chainId, token1.address);
-            expect(result[1]).to.equal(await token1.decimals());
-        });
-
-        it("Should return 'false' if Token isn't listed", async function () {
-            const { contract, owner } = await loadFixture(deployContract);
-            var result = await contract.connect(owner).isDestTokenListed(1, owner.address);
-
-            expect(result[0]).to.equal(false);
-        });
-
-        it("Should return 'false' if Token is in a different chain", async function () {
-            const { contract, owner } = await loadFixture(deployContract);
-            const { token1 } = await loadFixture(deployToken1);
-            await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
-            var result = await contract.connect(owner).isDestTokenListed(2, token1.address);
-
-            expect(result[0]).to.equal(false);
         });
     });
 

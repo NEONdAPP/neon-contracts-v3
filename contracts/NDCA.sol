@@ -7,7 +7,6 @@ import {SafeERC20} from "./utils/SafeERC20.sol";
 /**
  * @author  Hyper0x0 for NEON Protocol.
  * @title   NDCA.
- * @dev     All internal must be used as an abstract contract.
  * @notice  This contract manages DCAs, from creation to execution.
  */
 contract NDCA {
@@ -50,8 +49,8 @@ contract NDCA {
         uint40 perfExecution;
         uint8 strike;
         uint16 code;
-        bool allowOK;
-        bool balanceOK;
+        bool allowOk;
+        bool balanceOk;
     }
 
     mapping (uint40 => dcaData) private DCAs;
@@ -65,6 +64,7 @@ contract NDCA {
     uint24 immutable private TIME_BASE;
     uint256 immutable public DEFAULT_APPROVAL;
     address immutable public NROUTER;
+    address immutable public NCORE;
 
     event DCACreated(uint40 positionId, address owner);
     event DCAClosed(uint40 positionId, address owner);
@@ -72,7 +72,13 @@ contract NDCA {
     event DCAExecuted(uint40 positionId, address indexed reciever, uint256 chainId, uint256 amount, bool ibEnable, uint16 code);
     event DCAError(uint40 positionId, address indexed owner, uint8 strike);
 
-    constructor(address _NRouter, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau){
+    modifier onlyCore() {
+        require(msg.sender == NCORE, "NDCA: Only Core is allowed");
+        _;
+    }
+
+    constructor(address _NCore, address _NRouter, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau){
+        NCORE = _NCore;
         NROUTER = _NRouter;
         DEFAULT_APPROVAL = _defaultApproval;
         TIME_BASE = _timeBase;
@@ -81,7 +87,6 @@ contract NDCA {
     }
 
     /* WRITE METHODS*/
-    /* INTERNAL */
     /**
      * @notice  DCA creation.
      * @dev     startegies are available only in the current chain.
@@ -97,7 +102,7 @@ contract NDCA {
      * @param   _reqExecution  Required execution, if 0 is unlimited.
      * @param   _nowFirstExecution  if true, the first execution is brought forward to the current day.
      */
-    function _createDCA(
+    function createDCA(
         address _user,
         address _reciever,
         address _srcToken,
@@ -109,7 +114,7 @@ contract NDCA {
         uint8 _tau,
         uint40 _reqExecution,
         bool _nowFirstExecution
-    ) internal {
+    ) external onlyCore {
         require(_user != address(0) && _reciever != address(0), "NDCA: Null address not allowed");
         //require not needed, in the Core they are already checked against NPairs
         require(_tau >= MIN_TAU && _tau <= MAX_TAU, "NDCA: Tau out of limits");
@@ -158,7 +163,7 @@ contract NDCA {
      * @param   _destToken  Destination token address.
      * @param   _ibStrategy  Strategy address.
      */
-    function _closeDCA(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) internal {
+    function closeDCA(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) public onlyCore {
         require(_user != address(0), "NDCA: Null address not allowed");
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
         require(DCAs[dcaPosition[uniqueId]].owner != address(0), "NDCA: Already closed");
@@ -183,7 +188,7 @@ contract NDCA {
      * @param   _destToken  Destination token address.
      * @param   _ibStrategy  Strategy address.
      */
-    function _skipNextExecution(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) internal {
+    function skipNextExecution(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external onlyCore {
         require(_user != address(0), "NDCA: Null address not allowed");
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
         require(DCAs[dcaPosition[uniqueId]].owner != address(0), "NDCA: Already closed");
@@ -196,7 +201,7 @@ contract NDCA {
      * @notice  Initialize DCA execution to collect funds.
      * @param   _dcaId  Id of the DCA.
      */
-    function _initExecution(uint40 _dcaId) internal {
+    function initExecution(uint40 _dcaId) external onlyCore {
         require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
         require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
         if(!DCAs[_dcaId].initExecution){
@@ -214,7 +219,7 @@ contract NDCA {
      * @return  toBeStored  True if need to store the DCA.
      * @return  reason  Reason for the closure of the DCA.
      */
-    function _updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice, bool _ibError) internal returns (bool toBeStored, uint8 reason){
+    function updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice, bool _ibError) external onlyCore returns (bool toBeStored, uint8 reason){
         require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
         require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
         uint40 actualtime = (block.timestamp - DCAs[_dcaId].nextExecution) >= TIME_BASE ? (uint40(block.timestamp) - 3600) : DCAs[_dcaId].nextExecution;
@@ -241,13 +246,20 @@ contract NDCA {
         }
         //Completed or Errors
         if((DCAs[_dcaId].reqExecution != 0 && DCAs[_dcaId].perfExecution >= DCAs[_dcaId].reqExecution) || DCAs[_dcaId].strike >= 2){
-            _closeDCA(DCAs[_dcaId].owner, DCAs[_dcaId].srcToken, DCAs[_dcaId].chainId, DCAs[_dcaId].destToken, DCAs[_dcaId].ibStrategy);
+            closeDCA(DCAs[_dcaId].owner, DCAs[_dcaId].srcToken, DCAs[_dcaId].chainId, DCAs[_dcaId].destToken, DCAs[_dcaId].ibStrategy);
             toBeStored = true;
             if(DCAs[_dcaId].strike >= 2){reason = 2;}
         }
     }
+    /**
+     * @notice  Give permissions to manage Token to NCore.
+     * @param   _token  token address.
+     * @param   _amount  token amount.
+     */
+    function getPermit(address _token, uint256 _amount) public {
+        ERC20(_token).approve(NCORE, _amount);
+    }
     /* VIEW METHODS*/
-    /* INTERNAL */
     /**
      * @notice  Manages dynamic approval.
      * @param   _user  DCA owner.
@@ -259,7 +271,7 @@ contract NDCA {
      * @return  allowanceToAdd  Value to approve from ERC20 approval.
      * @return  allowanceDCA  Total value approved into the DCA contract.
      */
-    function _checkAllowance(address _user, address _srcToken, uint256 _srcAmount, uint40 _reqExecution) internal view returns (bool allowOk, bool increase, uint256 allowanceToAdd, uint256 allowanceDCA){
+    function checkAllowance(address _user, address _srcToken, uint256 _srcAmount, uint40 _reqExecution) external view returns (bool allowOk, bool increase, uint256 allowanceToAdd, uint256 allowanceDCA){
         uint256 ERC20Allowance = ERC20(_srcToken).allowance(_user, address(this));
         uint256 totalAmount = _reqExecution == 0 ? (DEFAULT_APPROVAL * 10 ** ERC20(_srcToken).decimals()) : (_srcAmount * _reqExecution);
         if(ERC20Allowance >= userAllowance[_user][_srcToken] && (userAllowance[_user][_srcToken] + totalAmount) < type(uint256).max){
@@ -276,12 +288,25 @@ contract NDCA {
         allowanceDCA = userAllowance[_user][_srcToken];
     }
     /**
+     * @notice  check if you have already created the DCA.
+     * @param   _user  DCA owner.
+     * @param   _srcToken  Source token address.
+     * @param   _chainId  Chain id for the destination token.
+     * @param   _destToken  Destination token address.
+     * @param   _ibStrategy  Strategy address.
+     * @return  bool  true if is possible create a DCA.
+     */
+    function checkAvailability(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external view returns (bool){
+        bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
+        return (DCAs[dcaPosition[uniqueId]].owner == address(0));
+    }
+    /**
      * @notice  Check if a DCA should be executed.
      * @param   _dcaId  Id of the DCA.
      * @return  bool  True if need to be executed.
      */
-    function _preCheck(uint40 _dcaId) internal view returns (bool){
-        return (block.timestamp >= DCAs[_dcaId].nextExecution && DCAs[_dcaId].nextExecution != 0);
+    function preCheck(uint40 _dcaId) external view returns (bool){
+        return (block.timestamp >= DCAs[_dcaId].nextExecution && DCAs[_dcaId].owner != address(0));
     }
     /**
      * @notice  Check requirements for performing the DCA.
@@ -290,8 +315,8 @@ contract NDCA {
      * @return  allowOk  True if allowance is OK.
      * @return  balanceOk  True if balance is OK.
      */
-    function _check(uint40 _dcaId) internal view returns (bool exe, bool allowOk, bool balanceOk){
-        exe = (block.timestamp >= DCAs[_dcaId].nextExecution && DCAs[_dcaId].nextExecution != 0);
+    function check(uint40 _dcaId) external view onlyCore returns (bool exe, bool allowOk, bool balanceOk){
+        exe = (block.timestamp >= DCAs[_dcaId].nextExecution && DCAs[_dcaId].owner != address(0));
         if(exe){
             allowOk = (ERC20(DCAs[_dcaId].srcToken).allowance(DCAs[_dcaId].owner, address(this)) >= DCAs[_dcaId].srcAmount);
             balanceOk = (ERC20(DCAs[_dcaId].srcToken).balanceOf(DCAs[_dcaId].owner) >= DCAs[_dcaId].srcAmount);
@@ -308,7 +333,7 @@ contract NDCA {
      * @return  destDecimals  Destination token decimals.
      * @return  srcAmount  Amount to invest into the DCA.
      */
-    function _dataDCA(uint40 _dcaId) internal view returns (
+    function dataDCA(uint40 _dcaId) external view onlyCore returns (
         address reciever,
         address srcToken,
         uint8 srcDecimals,
@@ -331,7 +356,7 @@ contract NDCA {
      * @param   _user  DCA owner.
      * @return  dcaDetail  DCA info data.
      */
-    function _detailDCA(uint40 _dcaId, address _user) internal view returns (dcaDetail memory){
+    function detailDCA(uint40 _dcaId, address _user) external view onlyCore returns (dcaDetail memory){
         dcaDetail memory data;
         if(DCAs[_dcaId].owner == _user){
             data.reciever = DCAs[_dcaId].reciever;
@@ -349,8 +374,8 @@ contract NDCA {
             data.perfExecution = DCAs[_dcaId].perfExecution;
             data.strike = DCAs[_dcaId].strike;
             data.code = DCAs[_dcaId].code;
-            data.allowOK = (ERC20(DCAs[_dcaId].srcToken).allowance(DCAs[_dcaId].owner, address(this)) >= DCAs[_dcaId].srcAmount);
-            data.balanceOK = (ERC20(DCAs[_dcaId].srcToken).balanceOf(DCAs[_dcaId].owner) >= DCAs[_dcaId].srcAmount);
+            data.allowOk = (ERC20(DCAs[_dcaId].srcToken).allowance(DCAs[_dcaId].owner, address(this)) >= DCAs[_dcaId].srcAmount);
+            data.balanceOk = (ERC20(DCAs[_dcaId].srcToken).balanceOf(DCAs[_dcaId].owner) >= DCAs[_dcaId].srcAmount);
         }
         return data;
     }

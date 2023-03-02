@@ -33,7 +33,7 @@ contract NHistorian {
      * @param   _userAddress  reference address of the owner.
      * @param   _struct  data to be stored.
      */
-    function _storeDCA(address _userAddress, histDetail calldata _struct) internal {
+    function _storeDCA(address _userAddress, histDetail memory _struct) internal {
         require(_userAddress != address(0), "NHistorian: Null address not allowed");
         //buffer
         database[_userAddress].bufferId = database[_userAddress].bufferId >= 200 ? 1 : database[_userAddress].bufferId +1;
@@ -42,7 +42,7 @@ contract NHistorian {
         database[_userAddress].userData[bufferId].chainId = _struct.chainId;
         database[_userAddress].userData[bufferId].destToken = _struct.destToken;
         database[_userAddress].userData[bufferId].ibStrategy = _struct.ibStrategy;
-        database[_userAddress].userData[bufferId].closedDcaTime = _struct.closedDcaTime > 0 ? _struct.closedDcaTime : uint40(block.timestamp);//Manage case of DCA closed without exe
+        database[_userAddress].userData[bufferId].closedDcaTime = _struct.closedDcaTime;
         database[_userAddress].userData[bufferId].reason = _struct.reason;
         if(database[_userAddress].totStored < 200){
             unchecked {
@@ -61,8 +61,8 @@ contract NHistorian {
     function _getHistoryDataBatch(address _userAddress) internal view returns(histDetail[] memory, uint8 nBatch){
         uint8 totStored = database[_userAddress].totStored;
         histDetail[] memory dataOut = new histDetail[](totStored);
-        for(uint8 i=1; i<=totStored; i++){
-            dataOut[i-1] = database[_userAddress].userData[i];
+        for(uint8 i = 1; i <= totStored; i ++){
+            dataOut[i - 1] = database[_userAddress].userData[i];
         }
         return (dataOut, totStored);
     }
