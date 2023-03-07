@@ -20,8 +20,6 @@ contract NPairs is Ownable {
     mapping (address => bool) private srcToken;
     //ChainId => Token = Struct (Normal + CC)
     mapping (uint256 => mapping (address => token)) private destToken;
-    //Strategy Address => Token = Active
-    mapping (address => mapping (address => bool)) private ibStrategy;
     //srcToken => chainId => destToken = Active
     mapping (address => mapping (uint256 => mapping (address => bool))) private NotAwailablePair;
 
@@ -31,7 +29,6 @@ contract NPairs is Ownable {
 
     event SrcTokenListed(address indexed token, string symbol);
     event DestTokenListed(uint256 chainId, address indexed token, string symbol);
-    event IbStrategyListed(address indexed token, address strategy);
 
     /* WRITE METHODS*/
     /**
@@ -58,24 +55,12 @@ contract NPairs is Ownable {
         _listDestToken(_chainId, _token, _decimals, _symbol);
     }
     /**
-     * @notice  List interest bearing strategy contract.
-     * @dev     Available only in the current chain.
-     * @param   _token  Reference token address for the strategy.
-     * @param   _strategy  Strategy address.
-     */
-    function listIbStrategy(address _token, address _strategy) external onlyOwner {
-        require(_token != address(0) && _strategy != address(0), "NPairs: Null address not allowed");
-        require(destToken[block.chainid][_token].active, "NPairs: Reference token not listed");
-        require(!ibStrategy[_token][_strategy], "NPairs: Strategy already listed");
-        _listIbStrategy(_token, _strategy);
-    }
-    /**
      * @notice  Blacklist combination of tokens.
      * @param   _srcToken  Source token address.
      * @param   _chainId  Chain id for the destination token.
      * @param   _destToken  Destination token address.
      */
-    function definePairAvailability(address _srcToken, uint256 _chainId, address _destToken) external onlyOwner {
+    function blacklistPair(address _srcToken, uint256 _chainId, address _destToken) external onlyOwner {
         require(_srcToken != address(0) && _destToken != address(0), "NPairs: Null address not allowed");
         require(srcToken[_srcToken], "NPairs: Src.Token not listed");
         require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
@@ -85,18 +70,8 @@ contract NPairs is Ownable {
     /**
      * @notice  Return total tokens and strategy listed.
      */
-    function totalListed() external view returns(uint16 totSrcToken, uint16 totDestToken, uint16 totstrategy){
-        return(totSrc, totDest, totStrategy);
-    }
-    /**
-     * @notice  Return strategy status.
-     * @dev     Available only in the current chain.
-     * @param   _token  Reference token address for the strategy.
-     * @param   _strategy  Strategy address.
-     * @return  true if strategy is listed.
-     */
-    function isIbStrategyListed(address _token, address _strategy) public view returns(bool){
-        return ibStrategy[_token][_strategy];
+    function totalListed() external view returns(uint16 totSrcToken, uint16 totDestToken){
+        return(totSrc, totDest);
     }
     /**
      * @notice  Return status of selected pair.
@@ -119,7 +94,6 @@ contract NPairs is Ownable {
         }
         emit SrcTokenListed(_token, ERC20(_token).symbol());
     }
-
     function _listDestToken(uint256 _chainId, address _token, uint8 _decimals, string memory _symbol) private {
         string memory symbol;
         destToken[_chainId][_token].active = true;
@@ -134,12 +108,5 @@ contract NPairs is Ownable {
             destToken[_chainId][_token].decimals = _decimals;
         }
         emit DestTokenListed(_chainId, _token, symbol);
-    }
-    function _listIbStrategy(address _token, address _strategy) private {
-        ibStrategy[_token][_strategy] = true;
-        unchecked {
-            totStrategy ++;
-        }
-        emit IbStrategyListed(_token, _strategy);
     }
 }

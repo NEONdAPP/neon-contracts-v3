@@ -158,82 +158,13 @@ describe("NPairs Testing", function () {
         });
     });
 
-    describe("Function 'listIbStrategy'", function () {
+    describe("Function 'blacklistPair'", function () {
     //Fail Events
         it("Should fail if not Owner", async function () {
             const { contract, addr1 } = await loadFixture(deployContract);
 
             await expect(
-                contract.connect(addr1).listIbStrategy(addr1.address, addr1.address)
-            ).to.be.revertedWith("Ownable: caller is not the owner");
-        });
-
-        it("Should fail if address is 0x0", async function () {
-            const { contract, owner } = await loadFixture(deployContract);
-
-            await expect(
-                contract.connect(owner).listIbStrategy(ethers.constants.AddressZero, owner.address)
-            ).to.be.revertedWith("NPairs: Null address not allowed");
-
-            await expect(
-                contract.connect(owner).listIbStrategy(owner.address, ethers.constants.AddressZero)
-            ).to.be.revertedWith("NPairs: Null address not allowed");
-
-            await expect(
-                contract.connect(owner).listIbStrategy(ethers.constants.AddressZero, ethers.constants.AddressZero)
-            ).to.be.revertedWith("NPairs: Null address not allowed");
-        });
-
-        it("Should fail if Token isn't listed", async function () {
-            const { contract, owner, addr1 } = await loadFixture(deployContract);
-
-            await expect(
-                contract.connect(owner).listIbStrategy(addr1.address, addr1.address)
-            ).to.be.revertedWith("NPairs: Reference token not listed");
-        });
-
-        it("Should fail if Strategy is already listed", async function () {
-            const { contract, owner, addr1 } = await loadFixture(deployContract);
-            const { token1 } = await loadFixture(deployToken1);
-            await contract.connect(owner).listDestToken(contract.deployTransaction.chainId, token1.address, 0, "-");
-            await contract.connect(owner).listIbStrategy(token1.address, addr1.address);
-
-            await expect(contract.connect(owner).listIbStrategy(token1.address, addr1.address)
-            ).to.be.revertedWith("NPairs: Strategy already listed");
-        });
-    //Correct Events
-        it("Should list the Strategy & emit the event", async function () {
-            const { contract, owner, addr1 } = await loadFixture(deployContract);
-            const { token1 } = await loadFixture(deployToken1);
-            await contract.connect(owner).listDestToken(contract.deployTransaction.chainId, token1.address, 0, "-");
-            
-            await expect(contract.connect(owner).listIbStrategy(token1.address, addr1.address))
-            .to.emit(contract, "IbStrategyListed")
-            .withArgs(token1.address, addr1.address);
-        });
-
-        it("Should increase counter by 1 per strategy listed", async function () {
-            const { contract, owner } = await loadFixture(deployContract);
-            const { token1 } = await loadFixture(deployToken1);
-            const { token2 } = await loadFixture(deployToken2);
-            await contract.connect(owner).listDestToken(contract.deployTransaction.chainId, token1.address, 0, "-");
-            await contract.connect(owner).listDestToken(contract.deployTransaction.chainId, token2.address, 0, "-");
-            
-            await contract.connect(owner).listIbStrategy(token1.address, token1.address);
-            await contract.connect(owner).listIbStrategy(token1.address, owner.address);
-            await contract.connect(owner).listIbStrategy(token2.address, token1.address);
-            var result = await contract.connect(owner).totalListed();
-
-            expect(result[2]).to.equal(3);
-        });
-    });
-    describe("Function 'definePairAvailability'", function () {
-    //Fail Events
-        it("Should fail if not Owner", async function () {
-            const { contract, addr1 } = await loadFixture(deployContract);
-
-            await expect(
-                contract.connect(addr1).definePairAvailability(addr1.address, 1, addr1.address)
+                contract.connect(addr1).blacklistPair(addr1.address, 1, addr1.address)
             ).to.be.revertedWith("Ownable: caller is not the owner");
         });
 
@@ -241,15 +172,15 @@ describe("NPairs Testing", function () {
             const { contract, owner } = await loadFixture(deployContract);
     
             await expect(
-                contract.connect(owner).definePairAvailability(ethers.constants.AddressZero, 1, owner.address)
+                contract.connect(owner).blacklistPair(ethers.constants.AddressZero, 1, owner.address)
             ).to.be.revertedWith("NPairs: Null address not allowed");
     
             await expect(
-                contract.connect(owner).definePairAvailability(owner.address, 1,  ethers.constants.AddressZero)
+                contract.connect(owner).blacklistPair(owner.address, 1,  ethers.constants.AddressZero)
             ).to.be.revertedWith("NPairs: Null address not allowed");
     
             await expect(
-                contract.connect(owner).definePairAvailability(ethers.constants.AddressZero, 1, ethers.constants.AddressZero)
+                contract.connect(owner).blacklistPair(ethers.constants.AddressZero, 1, ethers.constants.AddressZero)
             ).to.be.revertedWith("NPairs: Null address not allowed");
         });
 
@@ -257,7 +188,7 @@ describe("NPairs Testing", function () {
             const { contract, owner } = await loadFixture(deployContract);
     
             await expect(
-                contract.connect(owner).definePairAvailability(owner.address, 1, owner.address)
+                contract.connect(owner).blacklistPair(owner.address, 1, owner.address)
             ).to.be.revertedWith("NPairs: Src.Token not listed");
         });
 
@@ -267,7 +198,7 @@ describe("NPairs Testing", function () {
             await contract.connect(owner).listSrcToken(token1.address);
 
             await expect(
-                contract.connect(owner).definePairAvailability(token1.address, 1, owner.address)
+                contract.connect(owner).blacklistPair(token1.address, 1, owner.address)
             ).to.be.revertedWith("NPairs: Dest.Token not listed");
         });
 
@@ -286,7 +217,7 @@ describe("NPairs Testing", function () {
             const { token1 } = await loadFixture(deployToken1);
             await contract.connect(owner).listSrcToken(token1.address);
             await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
-            await contract.connect(owner).definePairAvailability(token1.address, 1, token1.address)
+            await contract.connect(owner).blacklistPair(token1.address, 1, token1.address)
 
             expect(await contract.connect(owner).isPairAvailable(token1.address, 1, token1.address)).to.equal(false);
         });
@@ -299,7 +230,7 @@ describe("NPairs Testing", function () {
             await contract.connect(owner).listSrcToken(token2.address);
             await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
             await contract.connect(owner).listDestToken(1, token2.address, 18, "TST");
-            await contract.connect(owner).definePairAvailability(token1.address, 1, token1.address)
+            await contract.connect(owner).blacklistPair(token1.address, 1, token1.address)
             /* Combinations (Based on chainId 1)
                 Token1 - Token1
                 Token1 - Token2
