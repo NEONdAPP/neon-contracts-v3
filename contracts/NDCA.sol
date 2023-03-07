@@ -331,6 +331,7 @@ contract NDCA {
      * @return  chainId  Chain id for the destination token.
      * @return  destToken  Destination token address.
      * @return  destDecimals  Destination token decimals.
+     * @return  ibStrategy  Strategy address.
      * @return  srcAmount  Amount to invest into the DCA.
      */
     function dataDCA(uint40 _dcaId) external view onlyCore returns (
@@ -340,6 +341,7 @@ contract NDCA {
         uint256 chainId,
         address destToken,
         uint8 destDecimals,
+        address ibStrategy,
         uint256 srcAmount
     ){
         reciever = DCAs[_dcaId].reciever;
@@ -348,6 +350,7 @@ contract NDCA {
         chainId = DCAs[_dcaId].chainId;
         destToken = DCAs[_dcaId].destToken;
         destDecimals = DCAs[_dcaId].destDecimals;
+        ibStrategy = DCAs[_dcaId].ibStrategy;
         srcAmount = DCAs[_dcaId].srcAmount;
     }
     /**
