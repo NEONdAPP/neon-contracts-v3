@@ -27,7 +27,7 @@ contract NDCA {
         uint256 averagePrice;//USD (precision 6 dec)
         uint256 destTokenEarned;
         uint40 reqExecution;//0 = Unlimited
-        uint40 perfExecution;//counting only when completed correctly
+        uint40 perfExecution;
         uint8 strike;
         uint16 code;
         bool initExecution;
@@ -63,7 +63,7 @@ contract NDCA {
     uint8 immutable private MAX_TAU;
     uint24 immutable private TIME_BASE;
     uint256 immutable public DEFAULT_APPROVAL;
-    address immutable public NROUTER;
+    address immutable public RESOLVER;
     address immutable public NCORE;
 
     event DCACreated(uint40 positionId, address owner);
@@ -77,9 +77,9 @@ contract NDCA {
         _;
     }
 
-    constructor(address _NCore, address _NRouter, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau){
+    constructor(address _NCore, address _resolver, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau){
         NCORE = _NCore;
-        NROUTER = _NRouter;
+        RESOLVER = _resolver;
         DEFAULT_APPROVAL = _defaultApproval;
         TIME_BASE = _timeBase;
         MIN_TAU = _minTau;
@@ -206,7 +206,7 @@ contract NDCA {
         require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
         if(!DCAs[_dcaId].initExecution){
             DCAs[_dcaId].initExecution = true;
-            ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(DCAs[_dcaId].owner, NROUTER, DCAs[_dcaId].srcAmount);
+            ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(DCAs[_dcaId].owner, RESOLVER, DCAs[_dcaId].srcAmount);
         }
     }
     /**
@@ -215,11 +215,10 @@ contract NDCA {
      * @param   _destTokenAmount  Token earned with the DCA.
      * @param   _code  Execution code.
      * @param   _averagePrice  Single token purchase price USD.
-     * @param   _ibError  True if there was an internal error.
      * @return  toBeStored  True if need to store the DCA.
      * @return  reason  Reason for the closure of the DCA.
      */
-    function updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice, bool _ibError) external onlyCore returns (bool toBeStored, uint8 reason){
+    function updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice) external onlyCore returns (bool toBeStored, uint8 reason){
         require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
         require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
         uint40 actualtime = (block.timestamp - DCAs[_dcaId].nextExecution) >= TIME_BASE ? (uint40(block.timestamp) - 3600) : DCAs[_dcaId].nextExecution;
@@ -237,7 +236,7 @@ contract NDCA {
         }else{
             if(DCAs[_dcaId].initExecution){
                 DCAs[_dcaId].initExecution = false;
-                _refund(_ibError, _dcaId, _destTokenAmount);
+                _refund(_code, _dcaId, _destTokenAmount);
             }
             unchecked {
                 DCAs[_dcaId].strike ++;
@@ -404,15 +403,15 @@ contract NDCA {
     /**
      * @notice  Manage refund in case of error.
      * @dev     ibStartegy error from DCA contract return destToken, Swap error from Router return srcToken.
-     * @param   _internalError  True if is internal the error.
+     * @param   _code  Error code of the execution.
      * @param   _dcaId  Id of the DCA.
      * @param   _destTokenAmount  Token earned with the DCA.
      */
-    function _refund(bool _internalError, uint40 _dcaId, uint256 _destTokenAmount) private {
-        if(_internalError){
+    function _refund(uint16 _code, uint40 _dcaId, uint256 _destTokenAmount) private {
+        if(_code == 402){
             ERC20(DCAs[_dcaId].destToken).safeTransfer(DCAs[_dcaId].owner, _destTokenAmount);
         }else{
-            ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(NROUTER, DCAs[_dcaId].owner, DCAs[_dcaId].srcAmount);
+            ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(RESOLVER, DCAs[_dcaId].owner, DCAs[_dcaId].srcAmount);
         }
     }
 }

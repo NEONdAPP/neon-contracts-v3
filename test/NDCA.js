@@ -866,16 +866,14 @@ describe("NDCA Testing", function () {
                 dcaId: await contract.connect(owner).totalPositions(),
                 destTokenAmount: ethers.utils.parseUnits(String(999)),
                 code: 200,
-                averagePrice: ethers.BigNumber.from(String(1000000)),
-                internalError: false
+                averagePrice: ethers.BigNumber.from(String(1000000))
             };
             await expect(
                 contract.connect(owner).updateDCA(
                     0,
                     data.destTokenAmount,
                     data.code,
-                    data.averagePrice,
-                    data.internalError
+                    data.averagePrice
                     )
             ).to.be.revertedWith("NDCA: Id out of range");
 
@@ -884,8 +882,7 @@ describe("NDCA Testing", function () {
                     2,
                     data.destTokenAmount,
                     data.code,
-                    data.averagePrice,
-                    data.internalError
+                    data.averagePrice
                     )
             ).to.be.revertedWith("NDCA: Id out of range");
         });
@@ -924,16 +921,14 @@ describe("NDCA Testing", function () {
                 dcaId: await contract.connect(owner).totalPositions(),
                 destTokenAmount: ethers.utils.parseUnits(String(999)),
                 code: 200,
-                averagePrice: ethers.BigNumber.from(String(1000000)),
-                internalError: false
+                averagePrice: ethers.BigNumber.from(String(1000000))
             };
             await expect(
                 contract.connect(owner).updateDCA(
                     data.dcaId,
                     data.destTokenAmount,
                     data.code,
-                    data.averagePrice,
-                    data.internalError
+                    data.averagePrice
                     )
             ).to.be.revertedWith("NDCA: Execution not required");
         });
@@ -944,8 +939,7 @@ describe("NDCA Testing", function () {
                 dcaId: await contract.connect(owner).totalPositions(),
                 destTokenAmount: ethers.utils.parseUnits(String(999)),
                 code: 200,
-                averagePrice: ethers.BigNumber.from(String(1000000)),
-                internalError: false
+                averagePrice: ethers.BigNumber.from(String(1000000))
             };
             const ibEnable = params.ibStrategy != ethers.constants.AddressZero;
             await expect(
@@ -953,8 +947,7 @@ describe("NDCA Testing", function () {
                     data.dcaId,
                     data.destTokenAmount,
                     data.code,
-                    data.averagePrice,
-                    data.internalError
+                    data.averagePrice
                     )
             ).to.emit(contract, "DCAExecuted")
             .withArgs(data.dcaId, params.reciever, params.chainId, data.destTokenAmount, ibEnable, data.code);
@@ -966,8 +959,7 @@ describe("NDCA Testing", function () {
                 dcaId: await contract.connect(owner).totalPositions(),
                 destTokenAmount: ethers.utils.parseUnits(String(999)),
                 code: 400,
-                averagePrice: ethers.BigNumber.from(String(1000000)),
-                internalError: false
+                averagePrice: ethers.BigNumber.from(String(1000000))
             };
 
             await expect(
@@ -975,8 +967,7 @@ describe("NDCA Testing", function () {
                     data.dcaId,
                     data.destTokenAmount,
                     data.code,
-                    data.averagePrice,
-                    data.internalError
+                    data.averagePrice
                     )
             ).to.emit(contract, "DCAError")
             .withArgs(data.dcaId, params.user, 1);
@@ -988,8 +979,7 @@ describe("NDCA Testing", function () {
                 dcaId: await contract.connect(owner).totalPositions(),
                 destTokenAmount: ethers.utils.parseUnits(String(999)),
                 code: 400,
-                averagePrice: ethers.BigNumber.from(String(1000000)),
-                internalError: false
+                averagePrice: ethers.BigNumber.from(String(1000000))
             };
             const initialBalance = await neonToken1.balanceOf(params.user);
             const NROUTER = addr1;
@@ -1000,22 +990,20 @@ describe("NDCA Testing", function () {
                 data.dcaId,
                 data.destTokenAmount,
                 data.code,
-                data.averagePrice,
-                data.routerError
+                data.averagePrice
                 )
             
             expect(await neonToken1.balanceOf(NROUTER.address)).to.equal(0);
             expect(await neonToken1.balanceOf(params.user)).to.equal(initialBalance);
         });
 
-        it("Should refund user in case of error from the CONTRACT", async function () {
+        it("Should refund user in case of error from the CONTRACT (Ib Strategy)", async function () {
             const { contract, owner, params, neonToken1} = await loadFixture(createDCA);
             const data = {
                 dcaId: await contract.connect(owner).totalPositions(),
                 destTokenAmount: ethers.utils.parseUnits(String(200)),
-                code: 400,
-                averagePrice: ethers.BigNumber.from(String(1000000)),
-                internalError: true
+                code: 402,
+                averagePrice: ethers.BigNumber.from(String(1000000))
             };
             
             await neonToken1.connect(owner).transfer(contract.address, params.srcAmount);
@@ -1025,8 +1013,7 @@ describe("NDCA Testing", function () {
                 data.dcaId,
                 data.destTokenAmount,
                 data.code,
-                data.averagePrice,
-                data.internalError
+                data.averagePrice
                 )
             
             expect(await neonToken1.balanceOf(params.user)).to.equal(initialBalance);
@@ -1038,15 +1025,13 @@ describe("NDCA Testing", function () {
                 dcaId: await contract.connect(owner).totalPositions(),
                 destTokenAmount: ethers.utils.parseUnits(String(999)),
                 code: 200,
-                averagePrice: ethers.BigNumber.from(String(1000000)),
-                internalError: false
+                averagePrice: ethers.BigNumber.from(String(1000000))
             };
             await contract.connect(owner).updateDCA(
                 data.dcaId,
                 data.destTokenAmount,
                 data.code,
-                data.averagePrice,
-                data.internalError
+                data.averagePrice
                 )
             const {reciever} = await contract.connect(owner).detailDCA(1, params.user);
             expect(await contract.connect(owner).activeDCAs()).to.equal(0);
@@ -1059,15 +1044,13 @@ describe("NDCA Testing", function () {
                 dcaId: await contract.connect(owner).totalPositions(),
                 destTokenAmount: ethers.utils.parseUnits(String(999)),
                 code: 400,
-                averagePrice: ethers.BigNumber.from(String(1000000)),
-                internalError: false
+                averagePrice: ethers.BigNumber.from(String(1000000))
             };
             await contract.connect(owner).updateDCA(
                 data.dcaId,
                 data.destTokenAmount,
                 data.code,
-                data.averagePrice,
-                data.internalError
+                data.averagePrice
                 )
             //First Strike - DCA still presence
             var {reciever} = await contract.connect(owner).detailDCA(1, params.user);
@@ -1079,8 +1062,7 @@ describe("NDCA Testing", function () {
                 data.dcaId,
                 data.destTokenAmount,
                 data.code,
-                data.averagePrice,
-                data.internalError
+                data.averagePrice
                 )
             //Second Strike - DCA closed
             var {reciever} = await contract.connect(owner).detailDCA(1, params.user);
@@ -1123,16 +1105,14 @@ describe("NDCA Testing", function () {
                 dcaId: await contract.connect(owner).totalPositions(),
                 destTokenAmount: ethers.utils.parseUnits(String(999)),
                 code: 200,
-                averagePrice: ethers.BigNumber.from(String(1000000)),
-                internalError: false
+                averagePrice: ethers.BigNumber.from(String(1000000))
             };
             //First Execution
             await contract.connect(owner).updateDCA(
                 data.dcaId,
                 data.destTokenAmount,
                 data.code,
-                data.averagePrice,
-                data.internalError
+                data.averagePrice
                 )
             var {reciever, perfExecution} = await contract.connect(owner).detailDCA(1, params.user);
             expect(await contract.connect(owner).activeDCAs()).to.equal(1);
@@ -1144,8 +1124,7 @@ describe("NDCA Testing", function () {
                 data.dcaId,
                 data.destTokenAmount,
                 data.code,
-                data.averagePrice,
-                data.internalError
+                data.averagePrice
                 )
             var {reciever, perfExecution} = await contract.connect(owner).detailDCA(1, params.user);
             expect(await contract.connect(owner).activeDCAs()).to.equal(1);
@@ -1188,16 +1167,14 @@ describe("NDCA Testing", function () {
                 dcaId: await contract.connect(owner).totalPositions(),
                 destTokenAmount: ethers.utils.parseUnits(String(999)),
                 code: 200,
-                averagePrice: ethers.BigNumber.from(String(1000000)),
-                internalError: false
+                averagePrice: ethers.BigNumber.from(String(1000000))
             };
             //First Execution
             await contract.connect(owner).updateDCA(
                 data.dcaId,
                 data.destTokenAmount,
                 data.code,
-                data.averagePrice,
-                data.internalError
+                data.averagePrice
                 )
             var result = await contract.connect(owner).detailDCA(1, params.user);
             expect(result.destTokenEarned).to.equal(data.destTokenAmount);
@@ -1208,8 +1185,7 @@ describe("NDCA Testing", function () {
                 data.dcaId,
                 data.destTokenAmount,
                 data.code,
-                data.averagePrice,
-                data.internalError
+                data.averagePrice
                 )
             var result = await contract.connect(owner).detailDCA(1, params.user);
             expect(result.destTokenEarned).to.equal(data.destTokenAmount.mul(2));
