@@ -2,14 +2,13 @@
 pragma solidity 0.8.17;
 
 import {ERC20} from "./lib/ERC20.sol";
-import {Ownable} from "./access/Ownable.sol";
 
 /**
  * @author  Hyper0x0 for NEON Protocol.
  * @title   NPairs.
  * @notice  This contract deals with listing and checking the validity of the tokens pairs set in the DCAs.
  */
-contract NPairs is Ownable {
+contract NPairs {
 
     struct token{
         bool active;
@@ -26,9 +25,19 @@ contract NPairs is Ownable {
     uint16 private totStrategy;
     uint16 private totDest;
     uint16 private totSrc;
+    address immutable public OWNER;
 
     event SrcTokenListed(address indexed token, string symbol);
     event DestTokenListed(uint256 chainId, address indexed token, string symbol);
+
+    modifier onlyOwner() {
+        require(msg.sender == OWNER, "NPairs: Only Owner is allowed");
+        _;
+    }
+
+    constructor(address _owner){
+        OWNER = _owner;
+    }
 
     /* WRITE METHODS*/
     /**

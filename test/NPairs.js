@@ -6,7 +6,7 @@ describe("NPairs Testing", function () {
     async function deployContract(){
         const contractFactory = await ethers.getContractFactory("NPairs");
         const [owner, addr1, addr2] = await ethers.getSigners();
-        const contract = await contractFactory.deploy();
+        const contract = await contractFactory.deploy(owner.address);
         await contract.deployed();
         return {contractFactory, contract, owner, addr1, addr2};
     }
@@ -29,7 +29,7 @@ describe("NPairs Testing", function () {
     describe("Deployment", function () {
         it("Should set the right Owner", async function () {
             const { contract, owner } = await loadFixture(deployContract);
-            const contractOwner = await contract.owner();
+            const contractOwner = await contract.OWNER();
 
             expect(owner.address).to.equal(contractOwner);
         });
@@ -42,7 +42,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(addr1).listSrcToken(owner.address)
-              ).to.be.revertedWith("Ownable: caller is not the owner");
+              ).to.be.revertedWith("NPairs: Only Owner is allowed");
         });
 
         it("Should fail if address is 0x0", async function () {
@@ -92,7 +92,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(addr1).listDestToken(1, owner.address, 18, "TST")
-            ).to.be.revertedWith("Ownable: caller is not the owner");
+            ).to.be.revertedWith("NPairs: Only Owner is allowed");
         });
 
         it("Should fail if address is 0x0", async function () {
@@ -165,7 +165,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(addr1).blacklistPair(addr1.address, 1, addr1.address)
-            ).to.be.revertedWith("Ownable: caller is not the owner");
+            ).to.be.revertedWith("NPairs: Only Owner is allowed");
         });
 
         it("Should fail if address is 0x0", async function () {
