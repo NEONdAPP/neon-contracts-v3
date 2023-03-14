@@ -250,14 +250,6 @@ contract NDCA {
             if(DCAs[_dcaId].strike >= 2){reason = 2;}
         }
     }
-    /**
-     * @notice  Give permissions to manage Token to NCore.
-     * @param   _token  token address.
-     * @param   _amount  token amount.
-     */
-    function getPermit(address _token, uint256 _amount) public {
-        ERC20(_token).approve(NCORE, _amount);
-    }
     /* VIEW METHODS*/
     /**
      * @notice  Manages dynamic approval.

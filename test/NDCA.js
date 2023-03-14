@@ -14,10 +14,9 @@ describe("NDCA Testing", function () {
 
     async function deployNeonToken1(){
         const neonToken1Factory = await ethers.getContractFactory("NeonToken");
-        const [nt1Owner, nt1Addr1, nt1Addr2] = await ethers.getSigners();
         const neonToken1 = await neonToken1Factory.deploy();
         await neonToken1.deployed();
-        return {neonToken1Factory, neonToken1, nt1Owner, nt1Addr1, nt1Addr2};
+        return {neonToken1Factory, neonToken1};
     }
 
     async function createDCA(){
@@ -62,7 +61,7 @@ describe("NDCA Testing", function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
 
             expect(await contract.NCORE()).to.equal(owner.address);
-            expect(await contract.NROUTER()).to.equal(addr1.address);
+            expect(await contract.RESOLVER()).to.equal(addr1.address);
             expect(await contract.DEFAULT_APPROVAL()).to.equal(15000000);
         });
     });
@@ -982,10 +981,10 @@ describe("NDCA Testing", function () {
                 averagePrice: ethers.BigNumber.from(String(1000000))
             };
             const initialBalance = await neonToken1.balanceOf(params.user);
-            const NROUTER = addr1;
+            const RESOLVER = addr1;
             const approvalAmount = await contract.connect(owner).DEFAULT_APPROVAL();
             await contract.connect(owner).initExecution(await contract.connect(owner).totalPositions());
-            await neonToken1.connect(NROUTER).approve(contract.address, ethers.utils.parseUnits(String(approvalAmount)));
+            await neonToken1.connect(RESOLVER).approve(contract.address, ethers.utils.parseUnits(String(approvalAmount)));
             await contract.connect(owner).updateDCA(
                 data.dcaId,
                 data.destTokenAmount,
@@ -993,7 +992,7 @@ describe("NDCA Testing", function () {
                 data.averagePrice
                 )
             
-            expect(await neonToken1.balanceOf(NROUTER.address)).to.equal(0);
+            expect(await neonToken1.balanceOf(RESOLVER.address)).to.equal(0);
             expect(await neonToken1.balanceOf(params.user)).to.equal(initialBalance);
         });
 
@@ -1245,15 +1244,15 @@ describe("NDCA Testing", function () {
         it("Should transfer correct amount of token", async function () {
             const { contract, owner, params, neonToken1} = await loadFixture(createDCA);
             await contract.connect(owner).initExecution(await contract.connect(owner).totalPositions());
-            const NROUTER = await contract.NROUTER();
-            expect(await neonToken1.balanceOf(NROUTER)).to.equal(params.srcAmount);
+            const RESOLVER = await contract.RESOLVER();
+            expect(await neonToken1.balanceOf(RESOLVER)).to.equal(params.srcAmount);
         });
         it("Should transfer token only one time per execution", async function () {
             const { contract, owner, params, neonToken1} = await loadFixture(createDCA);
             await contract.connect(owner).initExecution(await contract.connect(owner).totalPositions());
             await contract.connect(owner).initExecution(await contract.connect(owner).totalPositions());
-            const NROUTER = await contract.NROUTER();
-            expect(await neonToken1.balanceOf(NROUTER)).to.equal(params.srcAmount);
+            const RESOLVER = await contract.RESOLVER();
+            expect(await neonToken1.balanceOf(RESOLVER)).to.equal(params.srcAmount);
         });
     });
 
@@ -1585,29 +1584,6 @@ describe("NDCA Testing", function () {
                 const { contract, owner, params} = await loadFixture(createDCA);
                 const result = await contract.connect(owner).checkAvailability(params.user, params.srcToken, params.chainId, params.destToken, params.ibStrategy);
                 expect(result).to.equal(false);              
-            });
-        });
-    describe("Function 'getPermit'", function () {
-        //Correct Events
-            it("Should approve correct amount for NCore", async function () {
-                const { contract, owner, addr1} = await loadFixture(deployContract);
-                const { neonToken1 } = await loadFixture(deployNeonToken1);
-                const params = {
-                    user: owner.address,
-                    reciever: owner.address,
-                    srcToken: neonToken1.address,
-                    chainId: contract.deployTransaction.chainId,
-                    destToken: neonToken1.address,
-                    destDecimals: 18,
-                    ibStrategy: addr1.address,
-                    srcAmount: ethers.utils.parseUnits(String(200)),
-                    tau: 10,
-                    reqExecution: 1,
-                    nowFirstExecution: true
-                };
-                await contract.connect(owner).getPermit(params.srcToken, params.srcAmount);
-                const result = await neonToken1.connect(owner).allowance(contract.address, owner.address);
-                expect(result).to.equal(params.srcAmount);              
             });
         });
 });
