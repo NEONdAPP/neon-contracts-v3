@@ -11,9 +11,7 @@ import "./NHistorian.sol";
 import "./NPairs.sol";
 import "./NDCA.sol";
 
-//Trasfer of token / receipt on NCORE
-//CAPIRE STRATEGY + TRASFER RESIDUAL
-//Check if DCA isn't existing 
+
 contract NCore is NHistorian {
     using SafeERC20 for ERC20;
     
@@ -34,8 +32,8 @@ contract NCore is NHistorian {
     struct update{
         uint40 id;
         uint256 destTokenAmount;
-        uint16 code;
         uint256 averagePrice;
+        uint16 code;
     }
 
     bool public resolverBusy;
@@ -95,13 +93,12 @@ contract NCore is NHistorian {
         NDCA(DCA).skipNextExecution(msg.sender, _srcToken, _chainId, _destToken, _ibStrategy);
     }
 
-    function transferResidual(address[] memory _tokens) external resolverFree onlyResolver {
+    function getResidual(address[] memory _tokens) external resolverFree onlyResolver {
         uint40 length = uint40(_tokens.length);
         uint256 balance;
         for(uint40 i; i < length; i ++){
-            balance = ERC20(_tokens[i]).balanceOf(DCA);
-            NDCA(DCA).getPermit(_tokens[i], balance);
-            ERC20(_tokens[i]).safeTransferFrom(DCA, RESOLVER, balance);
+            balance = ERC20(_tokens[i]).balanceOf(address(this));
+            ERC20(_tokens[i]).safeTransfer(RESOLVER, balance);
         }
     }
 
@@ -110,22 +107,21 @@ contract NCore is NHistorian {
         _initResolver();
     }
 
-    function startExecutionDCA(uint40[] memory _ids) external onlyResolver {
+    function startExecution(uint40[] memory _ids) external onlyResolver {
         uint40 length = uint40(_ids.length);
         for(uint40 i; i < length; i ++){
             NDCA(DCA).initExecution(_ids[i]);
         }
     }
 
-    function endExecutionDCA(update[] memory _data) external onlyResolver {
+    function closureExecution(update[] memory _data) external onlyResolver {
         uint40 length = uint40(_data.length);
         for(uint40 i; i < length; i ++){
             update memory tempData = _data[i];
             uint16 code = tempData.code;
             (address reciever, address srcToken, , uint256 chainId, address destToken, , address ibStrategy, ) = NDCA(DCA).dataDCA(tempData.id);
             if(ibStrategy != address(0) && code == 200){
-                NDCA(DCA).getPermit(destToken, tempData.destTokenAmount);
-                ERC20(destToken).safeTransferFrom(DCA, address(this), tempData.destTokenAmount);
+                ERC20(destToken).approve(ibStrategy, tempData.destTokenAmount);
                 try INStrategyIb(ibStrategy).depositAndStake(address(this), reciever, destToken, tempData.destTokenAmount){   
                 }catch{
                     ERC20(destToken).safeTransfer(DCA, tempData.destTokenAmount);
@@ -134,10 +130,10 @@ contract NCore is NHistorian {
             }
             (bool toBeStored, uint8 reason) = NDCA(DCA).updateDCA(tempData.id, tempData.destTokenAmount, code, tempData.averagePrice);
             if(toBeStored){
-                NDCA(DCA).closeDCA(msg.sender, srcToken, chainId, destToken, ibStrategy);
                 _storeDCA(msg.sender, histDetail(srcToken, chainId, destToken, ibStrategy, uint40(block.timestamp), reason));
             }
         }
+        _initResolver();
     }
 
     /* VIEW METHODS*/
@@ -187,7 +183,7 @@ contract NCore is NHistorian {
             (bool exe, bool allowOk, bool balanceOk) = NDCA(DCA).check(i);
             if(exe){
                 (address reciever, address srcToken, uint8 srcDecimals, uint256 chainId, address destToken, uint8 destDecimals, address ibStrategy, uint256 srcAmount) = NDCA(DCA).dataDCA(i);
-                outData[id].id = id;
+                outData[id].id = i;
                 outData[id].allowOk = allowOk;
                 outData[id].balanceOk = balanceOk;
                 outData[id].reciever = reciever;
