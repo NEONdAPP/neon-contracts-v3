@@ -7,6 +7,7 @@ import {SafeERC20} from "./utils/SafeERC20.sol";
 /**
  * @author  Hyper0x0 for NEON Protocol.
  * @title   NDCA.
+ * @dev     External contract part of NCore protocol, calls are enable only from NCore.
  * @notice  This contract manages DCAs, from creation to execution.
  */
 contract NDCA {
