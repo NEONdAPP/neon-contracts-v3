@@ -12,6 +12,12 @@ import "./NPairs.sol";
 import "./NDCA.sol";
 
 
+/**
+ * @author  Hyper0x0 for NEON Protocol.
+ * @title   NCore.
+ * @dev     Automatically deply all needed contract expect for the strategies.
+ * @notice  This contract manage the protocol, call by the UI and resolve flow.
+ */
 contract NCore is NHistorian {
     using SafeERC20 for ERC20;
     
@@ -62,7 +68,19 @@ contract NCore is NHistorian {
     }
 
     /* WRITE METHODS*/
-    //PUBLIC
+    /**
+     * @notice  DCA creation.
+     * @param   _reciever  Address where will recieve token / receipt.
+     * @param   _srcToken  Source token address.
+     * @param   _chainId  Chain id for the destination token.
+     * @param   _destToken  Destination token address.
+     * @param   _destDecimals  Destination token decimals.
+     * @param   _ibStrategy  Strategy address.
+     * @param   _srcAmount  Amount to invest into the DCA.
+     * @param   _tau  Frequency of invest.
+     * @param   _reqExecution  Required execution, if 0 is unlimited.
+     * @param   _nowFirstExecution  if true, the first execution is brought forward to the current day.
+     */
     function createDCA(
         address _reciever,
         address _srcToken,
@@ -83,16 +101,32 @@ contract NCore is NHistorian {
         }
         NDCA(DCA).createDCA(msg.sender, _reciever, _srcToken, _chainId, _destToken, _destDecimals, strategy, _srcAmount, _tau, _reqExecution, _nowFirstExecution);
     }
-
-
+    /**
+     * @notice  Close DCA.
+     * @param   _srcToken  Source token address.
+     * @param   _chainId  Chain id for the destination token.
+     * @param   _destToken  Destination token address.
+     * @param   _ibStrategy  Strategy address.
+     */
     function closeDCA(address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external resolverFree {
         NDCA(DCA).closeDCA(msg.sender, _srcToken, _chainId, _destToken, _ibStrategy);
         _storeDCA(msg.sender, histDetail(_srcToken, _chainId, _destToken, _ibStrategy, uint40(block.timestamp), 1));
     }
+    /**
+     * @notice  Skip next execution.
+     * @param   _srcToken  Source token address.
+     * @param   _chainId  Chain id for the destination token.
+     * @param   _destToken  Destination token address.
+     * @param   _ibStrategy  Strategy address.
+     */
     function skipNextExecution(address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external resolverFree {
         NDCA(DCA).skipNextExecution(msg.sender, _srcToken, _chainId, _destToken, _ibStrategy);
     }
-
+    /**
+     * @notice  Trasfer residual token to resolver.
+     * @dev     Available only when resolver isn't computing so there will be nothing left.
+     * @param   _tokens  Array of tokens to be trasfered.
+     */
     function getResidual(address[] memory _tokens) external resolverFree onlyResolver {
         uint40 length = uint40(_tokens.length);
         uint256 balance;
@@ -101,19 +135,27 @@ contract NCore is NHistorian {
             ERC20(_tokens[i]).safeTransfer(RESOLVER, balance);
         }
     }
-
-    //ROUTER
+    /**
+     * @notice  Initiate Resolver.
+     */
     function startupResolver() external onlyResolver {
         _initResolver();
     }
-
+    /**
+     * @notice  Start DCA executions.
+     * @param   _ids  Positions Ids to be executed.
+     */
     function startExecution(uint40[] memory _ids) external onlyResolver {
         uint40 length = uint40(_ids.length);
         for(uint40 i; i < length; i ++){
             NDCA(DCA).initExecution(_ids[i]);
         }
     }
-
+    /**
+     * @notice  Close / Complete DCA execution.
+     * @dev     Manage Ib strategy to Deposit&Stake.
+     * @param   _data  Positions datas to be updated after execution.
+     */
     function closureExecution(update[] memory _data) external onlyResolver {
         uint40 length = uint40(_data.length);
         for(uint40 i; i < length; i ++){
@@ -135,14 +177,36 @@ contract NCore is NHistorian {
         }
         _initResolver();
     }
-
     /* VIEW METHODS*/
+    /**
+     * @notice  Manages dynamic approval.
+     * @param   _srcToken  Source token address.
+     * @param   _srcAmount  Amount to invest into the DCA.
+     * @param   _reqExecution  Required execution, if 0 is unlimited.
+     * @return  allowOk  True if allowance is OK.
+     * @return  increase  True if need to increaseAllowance or false if need to approve.
+     * @return  allowanceToAdd  Value to approve from ERC20 approval.
+     * @return  allowanceDCA  Total value approved into the DCA contract.
+     */
     function checkAllowance(address _srcToken, uint256 _srcAmount, uint40 _reqExecution) external view returns (bool allowOk, bool increase, uint256 allowanceToAdd, uint256 allowanceDCA){
         return NDCA(DCA).checkAllowance(msg.sender, _srcToken, _srcAmount, _reqExecution);
     }
+    /**
+     * @notice  Verify if the user can create DCA.
+     * @param   _srcToken  Source token address.
+     * @param   _chainId  Chain id for the destination token.
+     * @param   _destToken  Destination token address.
+     * @param   _ibStrategy  Strategy address.
+     * @return  bool  True if is possible to create DCA.
+     */
     function checkAvailability(address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external view returns (bool){
         return NDCA(DCA).checkAvailability(msg.sender, _srcToken, _chainId, _destToken, _ibStrategy);
     }
+    /**
+     * @notice  Retrieve data for UI of active DCAs.
+     * @return  NDCA.dcaDetail[]  Array (Tuple) of data struct.
+     * @return  nBatch  Number of DCAs retrieved (Current active DCAs).
+     */
     function getDetail() external view returns (NDCA.dcaDetail[] memory, uint40 nBatch){
         NDCA.dcaDetail[] memory outData = new NDCA.dcaDetail[](_totalUserDCA(msg.sender));
         NDCA.dcaDetail memory tempData;
@@ -159,10 +223,18 @@ contract NCore is NHistorian {
         }
         return (outData, id);
     }
+    /**
+     * @notice  Retrieve data for UI of closed DCAs.
+     * @return  histDetail[]  Array (Tuple) of data struct.
+     * @return  nBatch  Number of History DCAs retrieved.
+     */
     function getHistorian() external view returns (histDetail[] memory, uint40 nBatch){
         return _getHistoryDataBatch(msg.sender);
     }
-    //ROUTER
+    /**
+     * @notice  Verify if one of DCAs need to be execute.
+     * @return  bool  True is execution is needed.
+     */
     function isExecutionNeeded() external view onlyResolver returns (bool){
         bool outData;
         uint40 totalpositions = NDCA(DCA).totalPositions();
@@ -174,7 +246,11 @@ contract NCore is NHistorian {
         }
         return outData;
     }
-
+    /**
+     * @notice  Retrieve data for resolver of DCAs that need execution.
+     * @return  resolverData[]  Array (Tuple) of data struct.
+     * @return  nBatch  Number DCAs retrieved.
+     */
     function getDataDCA() external view onlyResolver returns (resolverData[] memory, uint40 nBatch){
         resolverData[] memory outData = new resolverData[](_totalExecutable());
         uint40 id;
@@ -201,11 +277,14 @@ contract NCore is NHistorian {
         }
         return (outData, _totalExecutable());
     }
-
     /* PRIVATE */
     function _initResolver() private {
         resolverBusy = !resolverBusy;
     }
+    /**
+     * @notice  Retrieve total executable DCAs.
+     * @return  uint40  Number of DCAs that need execution.
+     */
     function _totalExecutable() private view returns (uint40) {
         uint40 totalpositions = NDCA(DCA).totalPositions();
         uint40 result;
@@ -218,6 +297,11 @@ contract NCore is NHistorian {
         }
         return result;
     }
+    /**
+     * @notice  Retrieve User total active DCAs.
+     * @param   _user  DCA owner.
+     * @return  uint40  Number of DCAs
+     */
     function _totalUserDCA(address _user) private view returns (uint40) {
         uint40 totalpositions = NDCA(DCA).totalPositions();
         NDCA.dcaDetail memory tempData;
