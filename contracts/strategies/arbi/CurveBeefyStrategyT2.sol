@@ -5,8 +5,8 @@ import {ERC20} from "../lib/ERC20.sol";
 import {SafeERC20} from "../utils/SafeERC20.sol";
 import {Ownable} from "../access/Ownable.sol";
 
-import {ICurveFi_pool2T} from "../interfaces/ICurveFi.sol";
-import {IBeefyVault} from "../interfaces/IBeefy.sol";
+import {ICurveFi_lp2T} from "../interfaces/ICurveFi.sol";
+import {IBeefyVault_2T} from "../interfaces/IBeefy.sol";
 
 /**
  * @author  Hyper0x0 for NEON Protocol.
@@ -14,7 +14,7 @@ import {IBeefyVault} from "../interfaces/IBeefy.sol";
  * @notice  Deposit on Curve and Stake LP on Beefy for interest bearing.
  * @dev     Only for Curve pool with 2 input that provide LP as receipt.
  */
-contract CurveBeefyStrategy is Ownable {
+contract CurveBeefyStrategyT2 is Ownable {
     using SafeERC20 for ERC20;
 
     struct strategy {
