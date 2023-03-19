@@ -15,7 +15,7 @@ import "./NDCA.sol";
 /**
  * @author  Hyper0x0 for NEON Protocol.
  * @title   NCore.
- * @dev     Automatically deply all needed contract expect for the strategies.
+ * @dev     Automatically deploy all needed contract expect for the strategies.
  * @notice  This contract manage the protocol, call by the UI and resolve flow.
  */
 contract NCore is NHistorian {
