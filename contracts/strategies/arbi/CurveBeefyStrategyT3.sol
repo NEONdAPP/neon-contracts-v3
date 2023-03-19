@@ -5,16 +5,16 @@ import {ERC20} from "../../lib/ERC20.sol";
 import {SafeERC20} from "../../utils/SafeERC20.sol";
 import {Ownable} from "../../access/Ownable.sol";
 
-import {ICurveFi_2T} from "../../interfaces/ICurveFi.sol";
+import {ICurveFi_3T} from "../../interfaces/ICurveFi.sol";
 import {IBeefyVault} from "../../interfaces/IBeefy.sol";
 
 /**
  * @author  Hyper0x0 for NEON Protocol.
- * @title   CurveBeefyStrategyT2.
- * @notice  Deposit on Curve and Stake on Beefy for interest bearing.
- * @dev     Only for Curve pool with 2 input that provide a receipt.
+ * @title   CurveBeefyStrategyT3.
+ * @notice  Deposit on Curve and Stake on Beefy for interest bearing (Convex).
+ * @dev     Only for Curve pool with 3 input that provide a receipt.
  */
-contract CurveBeefyStrategyT2 is Ownable {
+contract CurveBeefyStrategyT3 is Ownable {
     using SafeERC20 for ERC20;
 
     struct strategy {
@@ -37,8 +37,8 @@ contract CurveBeefyStrategyT2 is Ownable {
      * @param   _BeefyVault  Beefy vault address.
      */
     function listNew(address _token, address _CurvePool, address _CurveReceipt, address _BeefyVault) external onlyOwner {
-        require(_token == ICurveFi_2T(_CurvePool).coins(0) || _token == ICurveFi_2T(_CurvePool).coins(1), "CurveBeefyStrategyT2: Token not available for this pool");
-        require(_CurveReceipt == IBeefyVault(_BeefyVault).want(), "CurveBeefyStrategyT2: Receipt not available for this vault");
+        require(_token == ICurveFi_3T(_CurvePool).coins(0) || _token == ICurveFi_3T(_CurvePool).coins(1) || _token == ICurveFi_3T(_CurvePool).coins(2), "CurveBeefyStrategyT3: Token not available for this pool");
+        require(_CurveReceipt == IBeefyVault(_BeefyVault).want(), "CurveBeefyStrategyT3: Receipt not available for this vault");
         ibStrategy[_token].CurvePool = _CurvePool;
         ibStrategy[_token].CurveReceipt = _CurveReceipt;
         ibStrategy[_token].BeefyVault = _BeefyVault;
@@ -63,14 +63,18 @@ contract CurveBeefyStrategyT2 is Ownable {
      */
     function available(address _token) external view returns (bool){
         bool defined = ibStrategy[_token].CurvePool != address(0) && ibStrategy[_token].BeefyVault != address(0);
-        bool availability = (_token == ICurveFi_2T(ibStrategy[_token].CurvePool).coins(0) || _token == ICurveFi_2T(ibStrategy[_token].CurvePool).coins(1)) && ibStrategy[_token].CurveReceipt == IBeefyVault(ibStrategy[_token].BeefyVault).want();
+        bool availability = (_token == ICurveFi_3T(ibStrategy[_token].CurvePool).coins(0) || _token == ICurveFi_3T(ibStrategy[_token].CurvePool).coins(1) || _token == ICurveFi_3T(ibStrategy[_token].CurvePool).coins(2))
+                                && ibStrategy[_token].CurveReceipt == IBeefyVault(ibStrategy[_token].BeefyVault).want();
         return (defined && availability);
     }
     /* PRIVATE */
     function _deposit(address _contract, address _token, uint256 _amount) private returns (uint256) {
         ERC20(_token).approve(_contract, _amount);
-        uint256[2] memory amounts = _token == ICurveFi_2T(_contract).coins(0) ? [_amount, 0] : [0, _amount];
-        ICurveFi_2T(_contract).add_liquidity(amounts, 0);
+        uint256[3] memory amounts;
+        if(_token == ICurveFi_3T(_contract).coins(0)){amounts = [_amount, 0, 0];}
+        if(_token == ICurveFi_3T(_contract).coins(1)){amounts = [0, _amount, 0];}
+        if(_token == ICurveFi_3T(_contract).coins(2)){amounts = [0, 0, _amount];}
+        ICurveFi_3T(_contract).add_liquidity(amounts, 0);
         uint256 receiptAmount = ERC20(ibStrategy[_token].CurveReceipt).balanceOf(address(this));
         emit Deposited(_contract, receiptAmount);
         return receiptAmount;
@@ -79,7 +83,7 @@ contract CurveBeefyStrategyT2 is Ownable {
         ERC20(_curveReceipt).approve(_contract, _amount);
         IBeefyVault(_contract).deposit(_amount);
         uint256 receiptAmount = IBeefyVault(_contract).balanceOf(address(this));
-        require (IBeefyVault(_contract).transfer(_receiver, receiptAmount), "CurveBeefyStrategyT2: Error transfer Vault receipt");
+        require (IBeefyVault(_contract).transfer(_receiver, receiptAmount), "CurveBeefyStrategyT3: Error transfer Vault receipt");
         emit Staked(_contract, _receiver, receiptAmount);
     }
 }

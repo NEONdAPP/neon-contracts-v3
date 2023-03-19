@@ -47,8 +47,8 @@ contract SimulateStrategy is Ownable, ERC20 {
      */
     function depositAndStake(address _source, address _receiver, address _token, uint256 _amount) external {
         ERC20(_token).safeTransferFrom(_source, address(this), _amount);
-        uint256 lpAmount = _deposit(ibStrategy[_token].pool, _token, _amount);
-        _stake(ibStrategy[_token].vault, _receiver, lpAmount);
+        uint256 receiptAmount = _deposit(ibStrategy[_token].pool, _token, _amount);
+        _stake(ibStrategy[_token].vault, _receiver, receiptAmount);
     }
     /**
      * @notice  Check strategy availability for a secific token.
