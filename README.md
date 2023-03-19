@@ -27,7 +27,7 @@ In addition, n `strategies` are created to perform "Interest Bearing" with diffe
 
 ## Diagram
 
-![Contract Architecture](.\docs\img\contractArchitectureV3.webp)
+![Contract Architecture](./docs/img/contractArchitectureV3.webp)
 
 # Security Audit
 > OnGoing...
