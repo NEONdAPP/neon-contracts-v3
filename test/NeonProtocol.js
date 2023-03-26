@@ -2,9 +2,9 @@ const { expect } = require("chai");
 const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 const { ethers } = require("hardhat");
 
-describe("Neon Protocol (NCore) Testing", function () {
+describe("Neon Protocol (NManager) Testing", function () {
     async function deployContract(){
-        const contractFactory = await ethers.getContractFactory("NCore");
+        const contractFactory = await ethers.getContractFactory("NManager");
         const [owner, addr1, addr2] = await ethers.getSigners();
         const params = {
             resolver: owner.address,
@@ -17,8 +17,8 @@ describe("Neon Protocol (NCore) Testing", function () {
         await contract.deployed();
 
         //Connect to enbedded contract
-        const dcaFactory = await ethers.getContractFactory("NDCA");
-        const dca = dcaFactory.attach(await contract.DCA());
+        const dcaFactory = await ethers.getContractFactory("NCore");
+        const dca = dcaFactory.attach(await contract.CORE());
         const poolFactory = await ethers.getContractFactory("NPairs");
         const pool = poolFactory.attach(await contract.POOL());
         return {contract, dca, pool, owner, addr1, addr2};
@@ -90,7 +90,7 @@ describe("Neon Protocol (NCore) Testing", function () {
             const { contract, dca, pool, owner } = await loadFixture(deployContract);
             const resolver = await contract.RESOLVER();
             expect(owner.address).to.equal(resolver);
-            expect(dca.address).to.equal(await contract.DCA());
+            expect(dca.address).to.equal(await contract.CORE());
             expect(pool.address).to.equal(await contract.POOL());
         });
     });
@@ -129,7 +129,7 @@ describe("Neon Protocol (NCore) Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NCore: Selected pair not available");
+            ).to.be.revertedWith("NManager: Selected pair not available");
         });
         it("Should fail if Strategy isn't available", async function () {
             const { contract, pool, dca, owner, addr1 } = await loadFixture(deployContract);
@@ -163,7 +163,7 @@ describe("Neon Protocol (NCore) Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NCore: Selected strategy not available");
+            ).to.be.revertedWith("NManager: Selected strategy not available");
         });
     //Corrent Events
         it("Should create DCA ignoring Ib if address is 0x0", async function () {
@@ -262,7 +262,7 @@ describe("Neon Protocol (NCore) Testing", function () {
             const tokens = [addr1.address, addr2.address];
             await expect(
                 contract.connect(addr1).getResidual(tokens)
-            ).to.be.revertedWith("NCore: Only Resolver is allowed");
+            ).to.be.revertedWith("NManager: Only Resolver is allowed");
         });
         it("Should fail if Resolver is computing", async function () {
             const { contract, owner, addr1, addr2 } = await loadFixture(deployContract);
@@ -270,7 +270,7 @@ describe("Neon Protocol (NCore) Testing", function () {
             await startupResolver(owner, contract);
             await expect(
                 contract.connect(owner).getResidual(tokens)
-            ).to.be.revertedWith("NCore: Resolver is computing, try later");
+            ).to.be.revertedWith("NManager: Resolver is computing, try later");
         });
         //Corrent Events
         it("Should trasfer residual to Resolver", async function () {
@@ -398,7 +398,7 @@ describe("Neon Protocol (NCore) Testing", function () {
                 //Start Execution
                 const ids = [1, 2];
                 await contract.connect(owner).startExecution(ids);
-                //Simulate Resolver Send Token to NCore
+                //Simulate Resolver Send Token to NManager
                 await neonToken1.connect(owner).transfer(contract.address, ethers.utils.parseUnits(String(200)));
                 //End Execution
                 const data = [[1, ethers.utils.parseUnits(String(100)), 69, 200], [2, ethers.utils.parseUnits(String(100)), 70, 200]];

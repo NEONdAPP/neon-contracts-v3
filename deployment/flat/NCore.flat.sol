@@ -10,88 +10,8 @@
         .   
 */
 //SPDX-License-Identifier: MIT
-     
-// File: NHistorian.sol
 
-
-pragma solidity 0.8.17;
-
-/**
- * @author  Hyper0x0 for NEON Protocol.
- * @title   NHistorian.
- * @dev     All internal must be used as an abstract contract.
- * @notice  This contract takes care of historicizing the data of past DCAs for each user.
- */
-contract NHistorian {
-
-    struct data{
-        mapping (uint256 => histDetail) userData;
-        uint8 totStored;
-        uint8 bufferId;
-    }
-
-    struct histDetail{
-        address srcToken;
-        uint256 chainId;
-        address destToken;
-        address ibStrategy;
-        uint40 closedDcaTime;
-        uint8 reason; // (0 = Completed, 1 = User Close DCA, 2 = Strike Reached...)
-    }
-
-    mapping (address => data) private database;
-    
-    /* WRITE METHODS*/
-    /* INTERNAL */
-    /**
-     * @notice  store DCA data to buffer database.
-     * @param   _userAddress  reference address of the owner.
-     * @param   _struct  data to be stored.
-     */
-    function _storeDCA(address _userAddress, histDetail memory _struct) internal {
-        require(_userAddress != address(0), "NHistorian: Null address not allowed");
-        //buffer
-        database[_userAddress].bufferId = database[_userAddress].bufferId >= 200 ? 1 : database[_userAddress].bufferId +1;
-        uint8 bufferId = database[_userAddress].bufferId;
-        database[_userAddress].userData[bufferId].srcToken = _struct.srcToken;
-        database[_userAddress].userData[bufferId].chainId = _struct.chainId;
-        database[_userAddress].userData[bufferId].destToken = _struct.destToken;
-        database[_userAddress].userData[bufferId].ibStrategy = _struct.ibStrategy;
-        database[_userAddress].userData[bufferId].closedDcaTime = _struct.closedDcaTime;
-        database[_userAddress].userData[bufferId].reason = _struct.reason;
-        if(database[_userAddress].totStored < 200){
-            unchecked {
-                database[_userAddress].totStored ++;
-            }
-        }
-    }
-    /* VIEW METHODS*/
-    /* INTERNAL */
-    /**
-     * @notice  Retrieve all data from a specific address.
-     * @param   _userAddress  reference address.
-     * @return  histDetail batch data for each nBatch.
-     * @return  nBatch number of batch data retrieved.
-     */
-    function _getHistoryDataBatch(address _userAddress) internal view returns(histDetail[] memory, uint8 nBatch){
-        uint8 totStored = database[_userAddress].totStored;
-        histDetail[] memory dataOut = new histDetail[](totStored);
-        for(uint8 i = 1; i <= totStored; i ++){
-            dataOut[i - 1] = database[_userAddress].userData[i];
-        }
-        return (dataOut, totStored);
-    }
-}
-// File: interfaces/INStrategyIb.sol
-
-pragma solidity 0.8.17;
-
-interface INStrategyIb {
-    function depositAndStake(address _source, address _receiver, address _token, uint256 _amount) external;
-    function available(address _token) external view returns (bool);
-}
 // File: utils/Address.sol
-
 
 // OpenZeppelin Contracts (last updated v4.8.0) (utils/Address.sol)
 
@@ -422,90 +342,6 @@ abstract contract Context {
 
     function _msgData() internal view virtual returns (bytes calldata) {
         return msg.data;
-    }
-}
-// File: access/Ownable.sol
-
-
-// OpenZeppelin Contracts (last updated v4.7.0) (access/Ownable.sol)
-
-pragma solidity ^0.8.0;
-
-
-/**
- * @dev Contract module which provides a basic access control mechanism, where
- * there is an account (an owner) that can be granted exclusive access to
- * specific functions.
- *
- * By default, the owner account will be the one that deploys the contract. This
- * can later be changed with {transferOwnership}.
- *
- * This module is used through inheritance. It will make available the modifier
- * `onlyOwner`, which can be applied to your functions to restrict their use to
- * the owner.
- */
-abstract contract Ownable is Context {
-    address private _owner;
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
-    constructor() {
-        _transferOwnership(_msgSender());
-    }
-
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        _checkOwner();
-        _;
-    }
-
-    /**
-     * @dev Returns the address of the current owner.
-     */
-    function owner() public view virtual returns (address) {
-        return _owner;
-    }
-
-    /**
-     * @dev Throws if the sender is not the owner.
-     */
-    function _checkOwner() internal view virtual {
-        require(owner() == _msgSender(), "Ownable: caller is not the owner");
-    }
-
-    /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public virtual onlyOwner {
-        _transferOwnership(address(0));
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        _transferOwnership(newOwner);
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Internal function without access restriction.
-     */
-    function _transferOwnership(address newOwner) internal virtual {
-        address oldOwner = _owner;
-        _owner = newOwner;
-        emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
 // File: interfaces/IERC20.sol
@@ -1079,7 +915,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      */
     function _afterTokenTransfer(address from, address to, uint256 amount) internal virtual {}
 }
-// File: NDCA.sol
+// File: NCore.sol
 
 
 pragma solidity 0.8.17;
@@ -1088,11 +924,11 @@ pragma solidity 0.8.17;
 
 /**
  * @author  Hyper0x0 for NEON Protocol.
- * @title   NDCA.
- * @dev     External contract part of NCore protocol, calls are enable only from NCore.
+ * @title   NCore.
+ * @dev     External contract part of NManager protocol, calls are enable only from NManager.
  * @notice  This contract manages DCAs, from creation to execution.
  */
-contract NDCA {
+contract NCore {
     using SafeERC20 for ERC20;
 
     struct dcaData{
@@ -1147,7 +983,7 @@ contract NDCA {
     uint24 immutable private TIME_BASE;
     uint256 immutable public DEFAULT_APPROVAL;
     address immutable public RESOLVER;
-    address immutable public NCORE;
+    address immutable public MANAGER;
 
     event DCACreated(uint40 positionId, address owner);
     event DCAClosed(uint40 positionId, address owner);
@@ -1155,13 +991,13 @@ contract NDCA {
     event DCAExecuted(uint40 positionId, address indexed reciever, uint256 chainId, uint256 amount, bool ibEnable, uint16 code);
     event DCAError(uint40 positionId, address indexed owner, uint8 strike);
 
-    modifier onlyCore() {
-        require(msg.sender == NCORE, "NDCA: Only Core is allowed");
+    modifier onlyManager() {
+        require(msg.sender == MANAGER, "NCore: Only Manager is allowed");
         _;
     }
 
-    constructor(address _NCore, address _resolver, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau){
-        NCORE = _NCore;
+    constructor(address _manager, address _resolver, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau){
+        MANAGER = _manager;
         RESOLVER = _resolver;
         DEFAULT_APPROVAL = _defaultApproval;
         TIME_BASE = _timeBase;
@@ -1197,7 +1033,7 @@ contract NDCA {
         uint8 _tau,
         uint40 _reqExecution,
         bool _nowFirstExecution
-    ) external onlyCore {
+    ) external onlyManager {
         require(_user != address(0) && _reciever != address(0), "NDCA: Null address not allowed");
         //require not needed, in the Core they are already checked against NPairs
         require(_tau >= MIN_TAU && _tau <= MAX_TAU, "NDCA: Tau out of limits");
@@ -1246,7 +1082,7 @@ contract NDCA {
      * @param   _destToken  Destination token address.
      * @param   _ibStrategy  Strategy address.
      */
-    function closeDCA(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) public onlyCore {
+    function closeDCA(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) public onlyManager {
         require(_user != address(0), "NDCA: Null address not allowed");
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
         require(DCAs[dcaPosition[uniqueId]].owner != address(0), "NDCA: Already closed");
@@ -1271,7 +1107,7 @@ contract NDCA {
      * @param   _destToken  Destination token address.
      * @param   _ibStrategy  Strategy address.
      */
-    function skipNextExecution(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external onlyCore {
+    function skipNextExecution(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external onlyManager {
         require(_user != address(0), "NDCA: Null address not allowed");
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
         require(DCAs[dcaPosition[uniqueId]].owner != address(0), "NDCA: Already closed");
@@ -1284,7 +1120,7 @@ contract NDCA {
      * @notice  Initialize DCA execution to collect funds.
      * @param   _dcaId  Id of the DCA.
      */
-    function initExecution(uint40 _dcaId) external onlyCore {
+    function initExecution(uint40 _dcaId) external onlyManager {
         require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
         require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
         if(!DCAs[_dcaId].initExecution){
@@ -1301,7 +1137,7 @@ contract NDCA {
      * @return  toBeStored  True if need to store the DCA.
      * @return  reason  Reason for the closure of the DCA.
      */
-    function updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice) external onlyCore returns (bool toBeStored, uint8 reason){
+    function updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice) external onlyManager returns (bool toBeStored, uint8 reason){
         require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
         require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
         uint40 actualtime = (block.timestamp - DCAs[_dcaId].nextExecution) >= TIME_BASE ? (uint40(block.timestamp) - 3600) : DCAs[_dcaId].nextExecution;
@@ -1389,7 +1225,7 @@ contract NDCA {
      * @return  allowOk  True if allowance is OK.
      * @return  balanceOk  True if balance is OK.
      */
-    function check(uint40 _dcaId) external view onlyCore returns (bool exe, bool allowOk, bool balanceOk){
+    function check(uint40 _dcaId) external view onlyManager returns (bool exe, bool allowOk, bool balanceOk){
         exe = (block.timestamp >= DCAs[_dcaId].nextExecution && DCAs[_dcaId].owner != address(0));
         if(exe){
             allowOk = (ERC20(DCAs[_dcaId].srcToken).allowance(DCAs[_dcaId].owner, address(this)) >= DCAs[_dcaId].srcAmount);
@@ -1408,7 +1244,7 @@ contract NDCA {
      * @return  ibStrategy  Strategy address.
      * @return  srcAmount  Amount to invest into the DCA.
      */
-    function dataDCA(uint40 _dcaId) external view onlyCore returns (
+    function dataDCA(uint40 _dcaId) external view onlyManager returns (
         address reciever,
         address srcToken,
         uint8 srcDecimals,
@@ -1433,7 +1269,7 @@ contract NDCA {
      * @param   _user  DCA owner.
      * @return  dcaDetail  DCA info data.
      */
-    function detailDCA(uint40 _dcaId, address _user) external view onlyCore returns (dcaDetail memory){
+    function detailDCA(uint40 _dcaId, address _user) external view onlyManager returns (dcaDetail memory){
         dcaDetail memory data;
         if(DCAs[_dcaId].owner == _user){
             data.reciever = DCAs[_dcaId].reciever;
@@ -1488,445 +1324,5 @@ contract NDCA {
         }else{
             ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(RESOLVER, DCAs[_dcaId].owner, DCAs[_dcaId].srcAmount);
         }
-    }
-}
-// File: NPairs.sol
-
-
-pragma solidity 0.8.17;
-
-
-/**
- * @author  Hyper0x0 for NEON Protocol.
- * @title   NPairs.
- * @notice  This contract deals with listing and checking the validity of the tokens pairs set in the DCAs.
- */
-contract NPairs {
-
-    struct token{
-        bool active;
-        uint8 decimals;
-    }
-
-    //Token = Active
-    mapping (address => bool) private srcToken;
-    //ChainId => Token = Struct (Normal + CC)
-    mapping (uint256 => mapping (address => token)) private destToken;
-    //srcToken => chainId => destToken = Active
-    mapping (address => mapping (uint256 => mapping (address => bool))) private NotAwailablePair;
-
-    uint16 private totStrategy;
-    uint16 private totDest;
-    uint16 private totSrc;
-    address immutable public OWNER;
-
-    event SrcTokenListed(address indexed token, string symbol);
-    event DestTokenListed(uint256 chainId, address indexed token, string symbol);
-
-    modifier onlyOwner() {
-        require(msg.sender == OWNER, "NPairs: Only Owner is allowed");
-        _;
-    }
-
-    constructor(address _owner){
-        OWNER = _owner;
-    }
-
-    /* WRITE METHODS*/
-    /**
-     * @notice  List source token that will be swapped.
-     * @param   _token  Token address.
-     */
-    function listSrcToken(address _token) external onlyOwner {
-        require(_token != address(0), "NPairs: Null address not allowed");
-        require(!srcToken[_token], "NPairs: Token already listed");
-        _listSrcToken(_token);
-    }
-    /**
-     * @notice  List destination token that will be recieved.
-     * @dev     _decimals & _symbol will be need if chain id is different from the current one.
-     * @param   _chainId  Destination chain id.
-     * @param   _token  Token address.
-     * @param   _decimals  Token decimals.
-     * @param   _symbol  Token symbol.
-     */
-    function listDestToken(uint256 _chainId, address _token, uint8 _decimals, string memory _symbol) external onlyOwner {
-        require(_token != address(0), "NPairs: Null address not allowed");
-        require(_chainId != 0, "NPairs: Chain ID must be > 0");
-        require(!destToken[_chainId][_token].active, "NPairs: Token already listed");
-        _listDestToken(_chainId, _token, _decimals, _symbol);
-    }
-    /**
-     * @notice  Blacklist combination of tokens.
-     * @param   _srcToken  Source token address.
-     * @param   _chainId  Chain id for the destination token.
-     * @param   _destToken  Destination token address.
-     */
-    function blacklistPair(address _srcToken, uint256 _chainId, address _destToken) external onlyOwner {
-        require(_srcToken != address(0) && _destToken != address(0), "NPairs: Null address not allowed");
-        require(srcToken[_srcToken], "NPairs: Src.Token not listed");
-        require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
-        NotAwailablePair[_srcToken][_chainId][_destToken] = !NotAwailablePair[_srcToken][_chainId][_destToken];
-    }
-    /* VIEW METHODS */
-    /**
-     * @notice  Return total tokens and strategy listed.
-     */
-    function totalListed() external view returns(uint16 totSrcToken, uint16 totDestToken){
-        return(totSrc, totDest);
-    }
-    /**
-     * @notice  Return status of selected pair.
-     * @param   _srcToken  Source token address.
-     * @param   _chainId  Chain id for the destination token.
-     * @param   _destToken  Destination token address.
-     * @return  true if pair is available.
-     */
-    function isPairAvailable(address _srcToken, uint256 _chainId, address _destToken) public view returns(bool){
-        require(_srcToken != address(0) && _destToken != address(0), "NPairs: Null address not allowed");
-        require(srcToken[_srcToken], "NPairs: Src.Token not listed");
-        require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
-        return !(NotAwailablePair[_srcToken][_chainId][_destToken]);
-    }
-    /* PRIVATE */
-    function _listSrcToken(address _token) private {
-        srcToken[_token] = true;
-        unchecked {
-            totSrc ++;
-        }
-        emit SrcTokenListed(_token, ERC20(_token).symbol());
-    }
-    function _listDestToken(uint256 _chainId, address _token, uint8 _decimals, string memory _symbol) private {
-        string memory symbol;
-        destToken[_chainId][_token].active = true;
-        unchecked {
-            totDest ++;
-        }
-        if(_chainId == block.chainid){
-            symbol = ERC20(_token).symbol();
-            destToken[_chainId][_token].decimals = ERC20(_token).decimals();
-        }else{
-            symbol = _symbol;
-            destToken[_chainId][_token].decimals = _decimals;
-        }
-        emit DestTokenListed(_chainId, _token, symbol);
-    }
-}
-// File: NCore.sol
-
-
-pragma solidity 0.8.17;
-
-
-
-
-
-
-
-
-
-/**
- * @author  Hyper0x0 for NEON Protocol.
- * @title   NCore.
- * @dev     Automatically deploy all needed contract expect for the strategies.
- * @notice  This contract manage the protocol, call by the UI and resolve flow.
- */
-contract NCore is NHistorian {
-    using SafeERC20 for ERC20;
-    
-    struct resolverData{
-        uint40 id;
-        bool allowOk;
-        bool balanceOk;
-        address reciever;
-        address srcToken;
-        uint8 srcDecimals;
-        uint256 chainId;
-        address destToken;
-        uint8 destDecimals;
-        address ibStrategy;
-        uint256 srcAmount;
-    }
-
-    struct update{
-        uint40 id;
-        uint256 destTokenAmount;
-        uint256 averagePrice;
-        uint16 code;
-    }
-
-    bool public resolverBusy;
-    address immutable public DCA;
-    address immutable public POOL;
-    address immutable public RESOLVER;
-
-    modifier onlyResolver() {
-        require(msg.sender == RESOLVER, "NCore: Only Resolver is allowed");
-        _;
-    }
-
-    modifier resolverFree() {
-        require(!resolverBusy, "NCore: Resolver is computing, try later");
-        _;
-    }
-
-    constructor(address _resolver, uint256 _defaultApproval, uint24 _timeBase, uint8 _minTau, uint8 _maxTau){
-        DCA = address(
-            new NDCA(address(this), _resolver, _defaultApproval, _timeBase, _minTau, _maxTau)
-        );
-        POOL = address(
-            new NPairs(msg.sender)
-        );
-        RESOLVER = _resolver;
-    }
-
-    /* WRITE METHODS*/
-    /**
-     * @notice  DCA creation.
-     * @param   _reciever  Address where will recieve token / receipt.
-     * @param   _srcToken  Source token address.
-     * @param   _chainId  Chain id for the destination token.
-     * @param   _destToken  Destination token address.
-     * @param   _destDecimals  Destination token decimals.
-     * @param   _ibStrategy  Strategy address.
-     * @param   _srcAmount  Amount to invest into the DCA.
-     * @param   _tau  Frequency of invest.
-     * @param   _reqExecution  Required execution, if 0 is unlimited.
-     * @param   _nowFirstExecution  if true, the first execution is brought forward to the current day.
-     */
-    function createDCA(
-        address _reciever,
-        address _srcToken,
-        uint256 _chainId,
-        address _destToken,
-        uint8 _destDecimals,
-        address _ibStrategy,
-        uint256 _srcAmount,
-        uint8 _tau,
-        uint40 _reqExecution,
-        bool _nowFirstExecution
-    ) external resolverFree {  
-        require(NPairs(POOL).isPairAvailable(_srcToken, _chainId, _destToken), "NCore: Selected pair not available");
-        address strategy;
-        if(_chainId == block.chainid && _ibStrategy != address(0)){
-            require(INStrategyIb(_ibStrategy).available(_destToken), "NCore: Selected strategy not available");
-            strategy = _ibStrategy;
-        }
-        NDCA(DCA).createDCA(msg.sender, _reciever, _srcToken, _chainId, _destToken, _destDecimals, strategy, _srcAmount, _tau, _reqExecution, _nowFirstExecution);
-    }
-    /**
-     * @notice  Close DCA.
-     * @param   _srcToken  Source token address.
-     * @param   _chainId  Chain id for the destination token.
-     * @param   _destToken  Destination token address.
-     * @param   _ibStrategy  Strategy address.
-     */
-    function closeDCA(address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external resolverFree {
-        NDCA(DCA).closeDCA(msg.sender, _srcToken, _chainId, _destToken, _ibStrategy);
-        _storeDCA(msg.sender, histDetail(_srcToken, _chainId, _destToken, _ibStrategy, uint40(block.timestamp), 1));
-    }
-    /**
-     * @notice  Skip next execution.
-     * @param   _srcToken  Source token address.
-     * @param   _chainId  Chain id for the destination token.
-     * @param   _destToken  Destination token address.
-     * @param   _ibStrategy  Strategy address.
-     */
-    function skipNextExecution(address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external resolverFree {
-        NDCA(DCA).skipNextExecution(msg.sender, _srcToken, _chainId, _destToken, _ibStrategy);
-    }
-    /**
-     * @notice  Trasfer residual token to resolver.
-     * @dev     Available only when resolver isn't computing so there will be nothing left.
-     * @param   _tokens  Array of tokens to be trasfered.
-     */
-    function getResidual(address[] memory _tokens) external resolverFree onlyResolver {
-        uint40 length = uint40(_tokens.length);
-        uint256 balance;
-        for(uint40 i; i < length; i ++){
-            balance = ERC20(_tokens[i]).balanceOf(address(this));
-            ERC20(_tokens[i]).safeTransfer(RESOLVER, balance);
-        }
-    }
-    /**
-     * @notice  Initiate Resolver.
-     */
-    function startupResolver() external onlyResolver {
-        _initResolver();
-    }
-    /**
-     * @notice  Start DCA executions.
-     * @param   _ids  Positions Ids to be executed.
-     */
-    function startExecution(uint40[] memory _ids) external onlyResolver {
-        uint40 length = uint40(_ids.length);
-        for(uint40 i; i < length; i ++){
-            NDCA(DCA).initExecution(_ids[i]);
-        }
-    }
-    /**
-     * @notice  Close / Complete DCA execution.
-     * @dev     Manage Ib strategy to Deposit&Stake.
-     * @param   _data  Positions datas to be updated after execution.
-     */
-    function closureExecution(update[] memory _data) external onlyResolver {
-        uint40 length = uint40(_data.length);
-        for(uint40 i; i < length; i ++){
-            update memory tempData = _data[i];
-            uint16 code = tempData.code;
-            (address reciever, address srcToken, , uint256 chainId, address destToken, , address ibStrategy, ) = NDCA(DCA).dataDCA(tempData.id);
-            if(ibStrategy != address(0) && code == 200){
-                ERC20(destToken).approve(ibStrategy, tempData.destTokenAmount);
-                try INStrategyIb(ibStrategy).depositAndStake(address(this), reciever, destToken, tempData.destTokenAmount){   
-                }catch{
-                    ERC20(destToken).safeTransfer(DCA, tempData.destTokenAmount);
-                    code = 402;
-                }
-            }
-            (bool toBeStored, uint8 reason) = NDCA(DCA).updateDCA(tempData.id, tempData.destTokenAmount, code, tempData.averagePrice);
-            if(toBeStored){
-                _storeDCA(msg.sender, histDetail(srcToken, chainId, destToken, ibStrategy, uint40(block.timestamp), reason));
-            }
-        }
-        _initResolver();
-    }
-    /* VIEW METHODS*/
-    /**
-     * @notice  Manages dynamic approval.
-     * @param   _srcToken  Source token address.
-     * @param   _srcAmount  Amount to invest into the DCA.
-     * @param   _reqExecution  Required execution, if 0 is unlimited.
-     * @return  allowOk  True if allowance is OK.
-     * @return  increase  True if need to increaseAllowance or false if need to approve.
-     * @return  allowanceToAdd  Value to approve from ERC20 approval.
-     * @return  allowanceDCA  Total value approved into the DCA contract.
-     */
-    function checkAllowance(address _srcToken, uint256 _srcAmount, uint40 _reqExecution) external view returns (bool allowOk, bool increase, uint256 allowanceToAdd, uint256 allowanceDCA){
-        return NDCA(DCA).checkAllowance(msg.sender, _srcToken, _srcAmount, _reqExecution);
-    }
-    /**
-     * @notice  Verify if the user can create DCA.
-     * @param   _srcToken  Source token address.
-     * @param   _chainId  Chain id for the destination token.
-     * @param   _destToken  Destination token address.
-     * @param   _ibStrategy  Strategy address.
-     * @return  bool  True if is possible to create DCA.
-     */
-    function checkAvailability(address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external view returns (bool){
-        return NDCA(DCA).checkAvailability(msg.sender, _srcToken, _chainId, _destToken, _ibStrategy);
-    }
-    /**
-     * @notice  Retrieve data for UI of active DCAs.
-     * @return  NDCA.dcaDetail[]  Array (Tuple) of data struct.
-     * @return  nBatch  Number of DCAs retrieved (Current active DCAs).
-     */
-    function getDetail() external view returns (NDCA.dcaDetail[] memory, uint40 nBatch){
-        NDCA.dcaDetail[] memory outData = new NDCA.dcaDetail[](_totalUserDCA(msg.sender));
-        NDCA.dcaDetail memory tempData;
-        uint40 id;
-        uint40 totalpositions = NDCA(DCA).totalPositions();
-        for(uint40 i = 1; i <= totalpositions; i ++){
-            tempData = NDCA(DCA).detailDCA(i, msg.sender);
-            if(tempData.reciever != address(0)){
-                outData[id] = tempData;
-                unchecked {
-                    id ++;
-                }
-            }
-        }
-        return (outData, id);
-    }
-    /**
-     * @notice  Retrieve data for UI of closed DCAs.
-     * @return  histDetail[]  Array (Tuple) of data struct.
-     * @return  nBatch  Number of History DCAs retrieved.
-     */
-    function getHistorian() external view returns (histDetail[] memory, uint40 nBatch){
-        return _getHistoryDataBatch(msg.sender);
-    }
-    /**
-     * @notice  Verify if one of DCAs need to be execute.
-     * @return  bool  True is execution is needed.
-     */
-    function isExecutionNeeded() external view onlyResolver returns (bool){
-        bool outData;
-        uint40 totalpositions = NDCA(DCA).totalPositions();
-        for(uint40 i = 1; i <= totalpositions; i ++){
-            if(NDCA(DCA).preCheck(i)){
-                outData = true;
-                break;
-            }
-        }
-        return outData;
-    }
-    /**
-     * @notice  Retrieve data for resolver of DCAs that need execution.
-     * @return  resolverData[]  Array (Tuple) of data struct.
-     * @return  nBatch  Number DCAs retrieved.
-     */
-    function getDataDCA() external view onlyResolver returns (resolverData[] memory, uint40 nBatch){
-        resolverData[] memory outData = new resolverData[](_totalExecutable());
-        uint40 id;
-        uint40 totalpositions = NDCA(DCA).totalPositions();
-        for(uint40 i = 1; i <= totalpositions; i ++){
-            (bool exe, bool allowOk, bool balanceOk) = NDCA(DCA).check(i);
-            if(exe){
-                (address reciever, address srcToken, uint8 srcDecimals, uint256 chainId, address destToken, uint8 destDecimals, address ibStrategy, uint256 srcAmount) = NDCA(DCA).dataDCA(i);
-                outData[id].id = i;
-                outData[id].allowOk = allowOk;
-                outData[id].balanceOk = balanceOk;
-                outData[id].reciever = reciever;
-                outData[id].srcToken = srcToken;
-                outData[id].srcDecimals = srcDecimals;
-                outData[id].chainId = chainId;
-                outData[id].destToken = destToken;
-                outData[id].destDecimals = destDecimals;
-                outData[id].ibStrategy = ibStrategy;
-                outData[id].srcAmount = srcAmount;
-                unchecked {
-                    id ++;
-                }
-            }
-        }
-        return (outData, _totalExecutable());
-    }
-    /* PRIVATE */
-    function _initResolver() private {
-        resolverBusy = !resolverBusy;
-    }
-    /**
-     * @notice  Retrieve total executable DCAs.
-     * @return  uint40  Number of DCAs that need execution.
-     */
-    function _totalExecutable() private view returns (uint40) {
-        uint40 totalpositions = NDCA(DCA).totalPositions();
-        uint40 result;
-        for(uint40 i = 1; i <= totalpositions; i ++){
-            if(NDCA(DCA).preCheck(i)){
-                unchecked {
-                    result ++;
-                }
-            }
-        }
-        return result;
-    }
-    /**
-     * @notice  Retrieve User total active DCAs.
-     * @param   _user  DCA owner.
-     * @return  uint40  Number of DCAs
-     */
-    function _totalUserDCA(address _user) private view returns (uint40) {
-        uint40 totalpositions = NDCA(DCA).totalPositions();
-        NDCA.dcaDetail memory tempData;
-        uint40 result;
-        for(uint40 i = 1; i <= totalpositions; i ++){
-            tempData = NDCA(DCA).detailDCA(i, _user);
-            if(tempData.reciever != address(0)){
-                unchecked {
-                    result ++;
-                }
-            }
-        }
-        return result;
     }
 }

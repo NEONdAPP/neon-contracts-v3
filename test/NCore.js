@@ -3,9 +3,9 @@ const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers"); //K
 const helpers = require("@nomicfoundation/hardhat-network-helpers"); //Full folder
 const { ethers } = require("hardhat");
 
-describe("NDCA Testing", function () {
+describe("NCore Testing", function () {
     async function deployContract(){
-        const contractFactory = await ethers.getContractFactory("NDCA");
+        const contractFactory = await ethers.getContractFactory("NCore");
         const [owner, addr1, addr2] = await ethers.getSigners();
         const contract = await contractFactory.deploy(owner.address, addr1.address, 15000000, 86400, 1, 30);
         await contract.deployed();
@@ -60,7 +60,7 @@ describe("NDCA Testing", function () {
         it("Should set the right parameter", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
 
-            expect(await contract.NCORE()).to.equal(owner.address);
+            expect(await contract.MANAGER()).to.equal(owner.address);
             expect(await contract.RESOLVER()).to.equal(addr1.address);
             expect(await contract.DEFAULT_APPROVAL()).to.equal(15000000);
         });
@@ -98,7 +98,7 @@ describe("NDCA Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NDCA: Null address not allowed");
+            ).to.be.revertedWith("NCore: Null address not allowed");
             await expect(
                 contract.connect(owner).createDCA(
                     params.user,
@@ -113,7 +113,7 @@ describe("NDCA Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NDCA: Null address not allowed");
+            ).to.be.revertedWith("NCore: Null address not allowed");
         });
 
         it("Should fail if Tau is out of range (1-30)", async function () {
@@ -146,7 +146,7 @@ describe("NDCA Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NDCA: Tau out of limits");
+            ).to.be.revertedWith("NCore: Tau out of limits");
             await expect(
                 contract.connect(owner).createDCA(
                     params.user,
@@ -161,7 +161,7 @@ describe("NDCA Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NDCA: Tau out of limits");
+            ).to.be.revertedWith("NCore: Tau out of limits");
         });
 
         it("Should fail if User try to create two identical DCA", async function () {
@@ -210,10 +210,10 @@ describe("NDCA Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NDCA: Already created with this pair");
+            ).to.be.revertedWith("NCore: Already created with this pair");
         });
 
-        it("Should fail if function isn't called by NCore", async function () {
+        it("Should fail if function isn't called by NManager", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
             const { neonToken1 } = await loadFixture(deployNeonToken1);
             const params = {
@@ -245,7 +245,7 @@ describe("NDCA Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NDCA: Only Core is allowed");
+            ).to.be.revertedWith("NCore: Only Manager is allowed");
         });
 
         it("Should fail if User doesn't have balance", async function () {
@@ -281,7 +281,7 @@ describe("NDCA Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NDCA: Insufficient balance");
+            ).to.be.revertedWith("NCore: Insufficient balance");
         });
 
         it("Should fail if User doesn't have allowance", async function () {
@@ -315,7 +315,7 @@ describe("NDCA Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NDCA: Insufficient approved token");
+            ).to.be.revertedWith("NCore: Insufficient approved token");
         });
     //Correct Events 
         it("Should increase position and active DCA", async function () {
@@ -630,7 +630,7 @@ describe("NDCA Testing", function () {
                     params.destToken,
                     params.ibStrategy,
                     )
-            ).to.be.revertedWith("NDCA: Null address not allowed");
+            ).to.be.revertedWith("NCore: Null address not allowed");
         });
         it("Should fail if User has not DCA to close", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
@@ -657,7 +657,7 @@ describe("NDCA Testing", function () {
                     params.destToken,
                     params.ibStrategy,
                     )
-            ).to.be.revertedWith("NDCA: Already closed");
+            ).to.be.revertedWith("NCore: Already closed");
         });
         //Correct Events 
         it("Should close DCA & emit the event", async function () {
@@ -837,7 +837,7 @@ describe("NDCA Testing", function () {
                     addr1.address,
                     addr1.address,
                     )
-            ).to.be.revertedWith("NDCA: Already closed");
+            ).to.be.revertedWith("NCore: Already closed");
         });
     //Correct Events 
         it("Should skip & emit the event", async function () {
@@ -874,7 +874,7 @@ describe("NDCA Testing", function () {
                     data.code,
                     data.averagePrice
                     )
-            ).to.be.revertedWith("NDCA: Id out of range");
+            ).to.be.revertedWith("NCore: Id out of range");
 
             await expect(
                 contract.connect(owner).updateDCA(
@@ -883,7 +883,7 @@ describe("NDCA Testing", function () {
                     data.code,
                     data.averagePrice
                     )
-            ).to.be.revertedWith("NDCA: Id out of range");
+            ).to.be.revertedWith("NCore: Id out of range");
         });
         it("Should fail if it's not the time to execute", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
@@ -929,7 +929,7 @@ describe("NDCA Testing", function () {
                     data.code,
                     data.averagePrice
                     )
-            ).to.be.revertedWith("NDCA: Execution not required");
+            ).to.be.revertedWith("NCore: Execution not required");
         });
     //Correct Events
         it("Should Execute & emit the event", async function () {
@@ -1199,11 +1199,11 @@ describe("NDCA Testing", function () {
 
             await expect(
                 contract.connect(owner).initExecution(0)
-            ).to.be.revertedWith("NDCA: Id out of range");
+            ).to.be.revertedWith("NCore: Id out of range");
 
             await expect(
                 contract.connect(owner).initExecution(2)
-            ).to.be.revertedWith("NDCA: Id out of range");
+            ).to.be.revertedWith("NCore: Id out of range");
         });
         it("Should fail if it's not the time to execute", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
@@ -1238,7 +1238,7 @@ describe("NDCA Testing", function () {
 
             await expect(
                 contract.connect(owner).initExecution(await contract.connect(owner).totalPositions())
-            ).to.be.revertedWith("NDCA: Execution not required");
+            ).to.be.revertedWith("NCore: Execution not required");
         });
     //Correct Events
         it("Should transfer correct amount of token", async function () {
