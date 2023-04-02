@@ -34,7 +34,6 @@ contract NHistorian {
      * @param   _struct  data to be stored.
      */
     function _storeDCA(address _userAddress, histDetail memory _struct) internal {
-        require(_userAddress != address(0), "NHistorian: Null address not allowed");
         //buffer
         database[_userAddress].bufferId = database[_userAddress].bufferId >= 200 ? 1 : database[_userAddress].bufferId +1;
         uint8 bufferId = database[_userAddress].bufferId;

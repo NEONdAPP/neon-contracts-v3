@@ -98,7 +98,7 @@ describe("NCore Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NCore: Null address not allowed");
+            ).to.be.revertedWithCustomError(contract, "ZERO_ADDRESS");
             await expect(
                 contract.connect(owner).createDCA(
                     params.user,
@@ -113,7 +113,7 @@ describe("NCore Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NCore: Null address not allowed");
+            ).to.be.revertedWithCustomError(contract, "ZERO_ADDRESS");
         });
 
         it("Should fail if Tau is out of range (1-30)", async function () {
@@ -146,7 +146,7 @@ describe("NCore Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NCore: Tau out of limits");
+            ).to.be.revertedWithCustomError(contract, "INVALID_TAU");
             await expect(
                 contract.connect(owner).createDCA(
                     params.user,
@@ -161,7 +161,7 @@ describe("NCore Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NCore: Tau out of limits");
+            ).to.be.revertedWithCustomError(contract, "INVALID_TAU");
         });
 
         it("Should fail if User try to create two identical DCA", async function () {
@@ -210,7 +210,7 @@ describe("NCore Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NCore: Already created with this pair");
+            ).to.be.revertedWithCustomError(contract, "ALREADY_CREATED");
         });
 
         it("Should fail if function isn't called by NManager", async function () {
@@ -245,7 +245,7 @@ describe("NCore Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NCore: Only Manager is allowed");
+            ).to.be.revertedWithCustomError(contract, "NOT_MANAGER");
         });
 
         it("Should fail if User doesn't have balance", async function () {
@@ -281,10 +281,10 @@ describe("NCore Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NCore: Insufficient balance");
+            ).to.be.revertedWithCustomError(contract, "INSUFFICIENT_BALANCE");
         });
 
-        it("Should fail if User doesn't have allowance", async function () {
+        it("Should fail if User doesn't have allowance / approval", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
             const { neonToken1 } = await loadFixture(deployNeonToken1);
             const params = {
@@ -315,7 +315,7 @@ describe("NCore Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NCore: Insufficient approved token");
+            ).to.be.revertedWithCustomError(contract, "INSUFFICIENT_APPROVAL");
         });
     //Correct Events 
         it("Should increase position and active DCA", async function () {
@@ -630,7 +630,7 @@ describe("NCore Testing", function () {
                     params.destToken,
                     params.ibStrategy,
                     )
-            ).to.be.revertedWith("NCore: Null address not allowed");
+            ).to.be.revertedWithCustomError(contract, "ZERO_ADDRESS");
         });
         it("Should fail if User has not DCA to close", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
@@ -657,7 +657,7 @@ describe("NCore Testing", function () {
                     params.destToken,
                     params.ibStrategy,
                     )
-            ).to.be.revertedWith("NCore: Already closed");
+            ).to.be.revertedWithCustomError(contract, "ALREADY_CLOSED");
         });
         //Correct Events 
         it("Should close DCA & emit the event", async function () {
@@ -837,7 +837,7 @@ describe("NCore Testing", function () {
                     addr1.address,
                     addr1.address,
                     )
-            ).to.be.revertedWith("NCore: Already closed");
+            ).to.be.revertedWithCustomError(contract, "ALREADY_CLOSED");
         });
     //Correct Events 
         it("Should skip & emit the event", async function () {
@@ -874,7 +874,7 @@ describe("NCore Testing", function () {
                     data.code,
                     data.averagePrice
                     )
-            ).to.be.revertedWith("NCore: Id out of range");
+            ).to.be.revertedWithCustomError(contract, "INVALID_ID");
 
             await expect(
                 contract.connect(owner).updateDCA(
@@ -883,7 +883,7 @@ describe("NCore Testing", function () {
                     data.code,
                     data.averagePrice
                     )
-            ).to.be.revertedWith("NCore: Id out of range");
+            ).to.be.revertedWithCustomError(contract, "INVALID_ID");
         });
         it("Should fail if it's not the time to execute", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
@@ -929,7 +929,7 @@ describe("NCore Testing", function () {
                     data.code,
                     data.averagePrice
                     )
-            ).to.be.revertedWith("NCore: Execution not required");
+            ).to.be.revertedWithCustomError(contract, "EXECUTION_NOT_REQUIRED");
         });
     //Correct Events
         it("Should Execute & emit the event", async function () {
@@ -1199,11 +1199,11 @@ describe("NCore Testing", function () {
 
             await expect(
                 contract.connect(owner).initExecution(0)
-            ).to.be.revertedWith("NCore: Id out of range");
+            ).to.be.revertedWithCustomError(contract, "INVALID_ID");
 
             await expect(
                 contract.connect(owner).initExecution(2)
-            ).to.be.revertedWith("NCore: Id out of range");
+            ).to.be.revertedWithCustomError(contract, "INVALID_ID");
         });
         it("Should fail if it's not the time to execute", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
@@ -1238,7 +1238,7 @@ describe("NCore Testing", function () {
 
             await expect(
                 contract.connect(owner).initExecution(await contract.connect(owner).totalPositions())
-            ).to.be.revertedWith("NCore: Execution not required");
+            ).to.be.revertedWithCustomError(contract, "EXECUTION_NOT_REQUIRED");
         });
     //Correct Events
         it("Should transfer correct amount of token", async function () {

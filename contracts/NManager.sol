@@ -11,6 +11,10 @@ import "./NHistorian.sol";
 import "./NPairs.sol";
 import "./NCore.sol";
 
+error NOT_RESOLVER();
+error RESOLVER_BUSY();
+error PAIR_NOT_AVAILABLE();
+error STRATEGY_NOT_AVAILABLE();
 
 /**
  * @author  Hyper0x0 for NEON Protocol.
@@ -48,12 +52,12 @@ contract NManager is NHistorian {
     address immutable public RESOLVER;
 
     modifier onlyResolver() {
-        require(msg.sender == RESOLVER, "NManager: Only Resolver is allowed");
+        if(msg.sender != RESOLVER) revert NOT_RESOLVER();
         _;
     }
 
     modifier resolverFree() {
-        require(!resolverBusy, "NManager: Resolver is computing, try later");
+        if(resolverBusy) revert RESOLVER_BUSY();
         _;
     }
 
@@ -92,11 +96,11 @@ contract NManager is NHistorian {
         uint8 _tau,
         uint40 _reqExecution,
         bool _nowFirstExecution
-    ) external resolverFree {  
-        require(NPairs(POOL).isPairAvailable(_srcToken, _chainId, _destToken), "NManager: Selected pair not available");
+    ) external resolverFree { 
+        if(!NPairs(POOL).isPairAvailable(_srcToken, _chainId, _destToken)) revert PAIR_NOT_AVAILABLE(); 
         address strategy;
         if(_chainId == block.chainid && _ibStrategy != address(0)){
-            require(INStrategyIb(_ibStrategy).available(_destToken), "NManager: Selected strategy not available");
+            if(!INStrategyIb(_ibStrategy).available(_destToken)) revert STRATEGY_NOT_AVAILABLE();
             strategy = _ibStrategy;
         }
         NCore(CORE).createDCA(msg.sender, _reciever, _srcToken, _chainId, _destToken, _destDecimals, strategy, _srcAmount, _tau, _reqExecution, _nowFirstExecution);

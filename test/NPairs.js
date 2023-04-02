@@ -42,7 +42,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(addr1).listSrcToken(owner.address)
-              ).to.be.revertedWith("NPairs: Only Owner is allowed");
+              ).to.be.revertedWithCustomError(contract, "NOT_OWNER");
         });
 
         it("Should fail if address is 0x0", async function () {
@@ -50,7 +50,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listSrcToken(ethers.constants.AddressZero)
-            ).to.be.revertedWith("NPairs: Null address not allowed");
+            ).to.be.revertedWithCustomError(contract, "ZERO_ADDRESS_2");
         });
 
         it("Should fail if Token is already listed", async function () {
@@ -60,7 +60,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listSrcToken(token1.address)
-            ).to.be.revertedWith("NPairs: Token already listed");
+            ).to.be.revertedWithCustomError(contract, "ALREADY_LISTED");
         });
 
     //Correct Events
@@ -92,7 +92,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(addr1).listDestToken(1, owner.address, 18, "TST")
-            ).to.be.revertedWith("NPairs: Only Owner is allowed");
+            ).to.be.revertedWithCustomError(contract, "NOT_OWNER");
         });
 
         it("Should fail if address is 0x0", async function () {
@@ -100,7 +100,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listDestToken(1, ethers.constants.AddressZero, 18, "TST")
-            ).to.be.revertedWith("NPairs: Null address not allowed");
+            ).to.be.revertedWithCustomError(contract, "ZERO_ADDRESS_2");
         });
 
         it("Should fail if chainId is 0", async function () {
@@ -108,7 +108,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listDestToken(0, owner.address, 18, "TST")
-            ).to.be.revertedWith("NPairs: Chain ID must be > 0");
+            ).to.be.revertedWithCustomError(contract, "INVALID_CHAIN");
         });
 
         it("Should fail if Token is already listed", async function () {
@@ -118,7 +118,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).listDestToken(1, token1.address, 18, "TST")
-            ).to.be.revertedWith("NPairs: Token already listed");
+            ).to.be.revertedWithCustomError(contract, "ALREADY_LISTED");
         });
 
     //Correct Events
@@ -165,7 +165,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(addr1).blacklistPair(addr1.address, 1, addr1.address)
-            ).to.be.revertedWith("NPairs: Only Owner is allowed");
+            ).to.be.revertedWithCustomError(contract, "NOT_OWNER");
         });
 
         it("Should fail if address is 0x0", async function () {
@@ -173,15 +173,15 @@ describe("NPairs Testing", function () {
     
             await expect(
                 contract.connect(owner).blacklistPair(ethers.constants.AddressZero, 1, owner.address)
-            ).to.be.revertedWith("NPairs: Null address not allowed");
+            ).to.be.revertedWithCustomError(contract, "ZERO_ADDRESS_2");
     
             await expect(
                 contract.connect(owner).blacklistPair(owner.address, 1,  ethers.constants.AddressZero)
-            ).to.be.revertedWith("NPairs: Null address not allowed");
+            ).to.be.revertedWithCustomError(contract, "ZERO_ADDRESS_2");
     
             await expect(
                 contract.connect(owner).blacklistPair(ethers.constants.AddressZero, 1, ethers.constants.AddressZero)
-            ).to.be.revertedWith("NPairs: Null address not allowed");
+            ).to.be.revertedWithCustomError(contract, "ZERO_ADDRESS_2");
         });
 
         it("Should fail if SrcToken not listed", async function () {
@@ -189,7 +189,7 @@ describe("NPairs Testing", function () {
     
             await expect(
                 contract.connect(owner).blacklistPair(owner.address, 1, owner.address)
-            ).to.be.revertedWith("NPairs: Src.Token not listed");
+            ).to.be.revertedWithCustomError(contract, "NOT_LISTED");
         });
 
         it("Should fail if DestToken not listed", async function () {
@@ -199,7 +199,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).blacklistPair(token1.address, 1, owner.address)
-            ).to.be.revertedWith("NPairs: Dest.Token not listed");
+            ).to.be.revertedWithCustomError(contract, "NOT_LISTED");
         });
 
     //Correct Events
@@ -251,7 +251,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).isPairAvailable(owner.address, 1, owner.address)
-            ).to.be.revertedWith("NPairs: Src.Token not listed");
+            ).to.be.revertedWithCustomError(contract, "NOT_LISTED");
         });
 
         it("Should fail if DestToken not listed", async function () {
@@ -261,7 +261,7 @@ describe("NPairs Testing", function () {
 
             await expect(
                 contract.connect(owner).isPairAvailable(token1.address, 1, owner.address)
-            ).to.be.revertedWith("NPairs: Dest.Token not listed");
+            ).to.be.revertedWithCustomError(contract, "NOT_LISTED");
         });
     });
 });

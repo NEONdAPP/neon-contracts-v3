@@ -12,14 +12,6 @@ describe("NHistorian Testing", function () {
     }
    
     describe("Store and Get Data", function () {
-    //Fail Events
-        it("Should fail if address is 0x0", async function () {
-            const { contract, owner, addr1 } = await loadFixture(deployContract);
-
-            await expect(
-                contract.connect(owner).store(ethers.constants.AddressZero, [addr1.address, 1, addr1.address, owner.address, 69, 4])
-            ).to.be.revertedWith("NHistorian: Null address not allowed");
-        });
     //Correct Events
         it("Should increase data counter by 1", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);

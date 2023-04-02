@@ -4,6 +4,16 @@ pragma solidity 0.8.17;
 import {ERC20} from "./lib/ERC20.sol";
 import {SafeERC20} from "./utils/SafeERC20.sol";
 
+error NOT_MANAGER();
+error ZERO_ADDRESS();
+error INVALID_TAU();
+error INVALID_ID();
+error ALREADY_CREATED();
+error ALREADY_CLOSED();
+error INSUFFICIENT_APPROVAL();
+error INSUFFICIENT_BALANCE();
+error MAX_POSITIONS_REACHED();
+error EXECUTION_NOT_REQUIRED();
 /**
  * @author  Hyper0x0 for NEON Protocol.
  * @title   NCore.
@@ -74,7 +84,7 @@ contract NCore {
     event DCAError(uint40 positionId, address indexed owner, uint8 strike);
 
     modifier onlyManager() {
-        require(msg.sender == MANAGER, "NCore: Only Manager is allowed");
+        if(msg.sender != MANAGER) revert NOT_MANAGER();
         _;
     }
 
@@ -116,18 +126,18 @@ contract NCore {
         uint40 _reqExecution,
         bool _nowFirstExecution
     ) external onlyManager {
-        require(_user != address(0) && _reciever != address(0), "NCore: Null address not allowed");
+        if(_user == address(0) || _reciever == address(0)) revert ZERO_ADDRESS();
         //require not needed, in the Core they are already checked against NPairs
-        require(_tau >= MIN_TAU && _tau <= MAX_TAU, "NCore: Tau out of limits");
+        if(_tau < MIN_TAU || _tau > MAX_TAU) revert INVALID_TAU();
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
-        require(DCAs[dcaPosition[uniqueId]].owner == address(0), "NCore: Already created with this pair");
+        if(DCAs[dcaPosition[uniqueId]].owner != address(0)) revert ALREADY_CREATED();
         uint256 allowanceToAdd = _reqExecution == 0 ? (DEFAULT_APPROVAL * 10 ** ERC20(_srcToken).decimals()) : (_srcAmount * _reqExecution);
         address owner = _user;//too avoid "Stack too Deep"
         userAllowance[owner][_srcToken] = (userAllowance[owner][_srcToken] + allowanceToAdd) < type(uint256).max ? (userAllowance[owner][_srcToken] + allowanceToAdd) : type(uint256).max;
-        require(ERC20(_srcToken).allowance(owner, address(this)) >= userAllowance[owner][_srcToken],"NCore: Insufficient approved token");
-        require(ERC20(_srcToken).balanceOf(owner) >= _srcAmount,"NCore: Insufficient balance");
+        if(ERC20(_srcToken).allowance(owner, address(this)) < userAllowance[owner][_srcToken]) revert INSUFFICIENT_APPROVAL();
+        if(ERC20(_srcToken).balanceOf(owner) < _srcAmount) revert INSUFFICIENT_BALANCE();
         if(dcaPosition[uniqueId] == 0){
-            require(totalPositions <= type(uint40).max, "NCore: Reached max positions");
+            if(totalPositions > type(uint40).max) revert MAX_POSITIONS_REACHED();
             unchecked {
                 totalPositions ++;
             }
@@ -165,9 +175,9 @@ contract NCore {
      * @param   _ibStrategy  Strategy address.
      */
     function closeDCA(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) public onlyManager {
-        require(_user != address(0), "NCore: Null address not allowed");
+        if(_user == address(0)) revert ZERO_ADDRESS();
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
-        require(DCAs[dcaPosition[uniqueId]].owner != address(0), "NCore: Already closed");
+        if(DCAs[dcaPosition[uniqueId]].owner == address(0)) revert ALREADY_CLOSED();
         DCAs[dcaPosition[uniqueId]].owner = address(0);
         uint256 allowanceToRemove;
         if(DCAs[dcaPosition[uniqueId]].reqExecution == 0){
@@ -190,9 +200,9 @@ contract NCore {
      * @param   _ibStrategy  Strategy address.
      */
     function skipNextExecution(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external onlyManager {
-        require(_user != address(0), "NCore: Null address not allowed");
+        if(_user == address(0)) revert ZERO_ADDRESS();
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
-        require(DCAs[dcaPosition[uniqueId]].owner != address(0), "NCore: Already closed");
+        if(DCAs[dcaPosition[uniqueId]].owner == address(0)) revert ALREADY_CLOSED();
         unchecked {
             DCAs[dcaPosition[uniqueId]].nextExecution += (DCAs[dcaPosition[uniqueId]].tau * TIME_BASE);
         }
@@ -203,8 +213,8 @@ contract NCore {
      * @param   _dcaId  Id of the DCA.
      */
     function initExecution(uint40 _dcaId) external onlyManager {
-        require(_dcaId != 0 && _dcaId <= totalPositions, "NCore: Id out of range");
-        require(block.timestamp >= DCAs[_dcaId].nextExecution, "NCore: Execution not required");
+        if(_dcaId == 0 || _dcaId > totalPositions) revert INVALID_ID();
+        if(block.timestamp < DCAs[_dcaId].nextExecution) revert EXECUTION_NOT_REQUIRED();
         if(!DCAs[_dcaId].initExecution){
             DCAs[_dcaId].initExecution = true;
             ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(DCAs[_dcaId].owner, RESOLVER, DCAs[_dcaId].srcAmount);
@@ -220,8 +230,8 @@ contract NCore {
      * @return  reason  Reason for the closure of the DCA.
      */
     function updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice) external onlyManager returns (bool toBeStored, uint8 reason){
-        require(_dcaId != 0 && _dcaId <= totalPositions, "NCore: Id out of range");
-        require(block.timestamp >= DCAs[_dcaId].nextExecution, "NCore: Execution not required");
+        if(_dcaId == 0 || _dcaId > totalPositions) revert INVALID_ID();
+        if(block.timestamp < DCAs[_dcaId].nextExecution) revert EXECUTION_NOT_REQUIRED();
         uint40 actualtime = (block.timestamp - DCAs[_dcaId].nextExecution) >= TIME_BASE ? (uint40(block.timestamp) - 3600) : DCAs[_dcaId].nextExecution;
         DCAs[_dcaId].nextExecution =  actualtime + (DCAs[_dcaId].tau * TIME_BASE);
         DCAs[_dcaId].code = _code;

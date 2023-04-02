@@ -129,7 +129,7 @@ describe("Neon Protocol (NManager) Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NManager: Selected pair not available");
+            ).to.be.revertedWithCustomError(contract, "PAIR_NOT_AVAILABLE");
         });
         it("Should fail if Strategy isn't available", async function () {
             const { contract, pool, dca, owner, addr1 } = await loadFixture(deployContract);
@@ -163,7 +163,7 @@ describe("Neon Protocol (NManager) Testing", function () {
                     params.reqExecution,
                     params.nowFirstExecution
                     )
-            ).to.be.revertedWith("NManager: Selected strategy not available");
+            ).to.be.revertedWithCustomError(contract, "STRATEGY_NOT_AVAILABLE");
         });
     //Corrent Events
         it("Should create DCA ignoring Ib if address is 0x0", async function () {
@@ -262,7 +262,7 @@ describe("Neon Protocol (NManager) Testing", function () {
             const tokens = [addr1.address, addr2.address];
             await expect(
                 contract.connect(addr1).getResidual(tokens)
-            ).to.be.revertedWith("NManager: Only Resolver is allowed");
+            ).to.be.revertedWithCustomError(contract, "NOT_RESOLVER");
         });
         it("Should fail if Resolver is computing", async function () {
             const { contract, owner, addr1, addr2 } = await loadFixture(deployContract);
@@ -270,7 +270,7 @@ describe("Neon Protocol (NManager) Testing", function () {
             await startupResolver(owner, contract);
             await expect(
                 contract.connect(owner).getResidual(tokens)
-            ).to.be.revertedWith("NManager: Resolver is computing, try later");
+            ).to.be.revertedWithCustomError(contract, "RESOLVER_BUSY");
         });
         //Corrent Events
         it("Should trasfer residual to Resolver", async function () {

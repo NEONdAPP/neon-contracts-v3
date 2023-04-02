@@ -7,6 +7,9 @@ import {Ownable} from "../../access/Ownable.sol";
 
 import {IBeefyVault} from "../../interfaces/IBeefy.sol";
 
+error TOKEN_NO_MATCH();
+error ERROR_TRANSFER();
+
 /**
  * @author  Hyper0x0 for NEON Protocol.
  * @title   BeefyStrategy.
@@ -27,7 +30,7 @@ contract BeefyStrategy is Ownable {
      * @param   _BeefyVault  Beefy vault address.
      */
     function listNew(address _token, address _BeefyVault) external onlyOwner {
-        require(_token == IBeefyVault(_BeefyVault).want(), "BeefyStrategy: Receipt not available for this vault");
+        if(_token != IBeefyVault(_BeefyVault).want()) revert TOKEN_NO_MATCH();
         BeefyVault[_token] = _BeefyVault;
     }
     /**
@@ -57,7 +60,7 @@ contract BeefyStrategy is Ownable {
         ERC20(_token).approve(_contract, _amount);
         IBeefyVault(_contract).deposit(_amount);
         uint256 receiptAmount = IBeefyVault(_contract).balanceOf(address(this));
-        require (IBeefyVault(_contract).transfer(_receiver, receiptAmount), "BeefyStrategy: Error transfer Vault receipt");
+        if(!IBeefyVault(_contract).transfer(_receiver, receiptAmount)) revert ERROR_TRANSFER();
         emit Staked(_contract, _receiver, receiptAmount);
     }
 }

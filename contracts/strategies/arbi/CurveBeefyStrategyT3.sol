@@ -8,6 +8,10 @@ import {Ownable} from "../../access/Ownable.sol";
 import {ICurveFi_3T} from "../../interfaces/ICurveFi.sol";
 import {IBeefyVault} from "../../interfaces/IBeefy.sol";
 
+error TOKEN_NO_MATCH();
+error RECEIPT_NO_MATCH();
+error ERROR_TRANSFER();
+
 /**
  * @author  Hyper0x0 for NEON Protocol.
  * @title   CurveBeefyStrategyT3.
@@ -37,8 +41,8 @@ contract CurveBeefyStrategyT3 is Ownable {
      * @param   _BeefyVault  Beefy vault address.
      */
     function listNew(address _token, address _CurvePool, address _CurveReceipt, address _BeefyVault) external onlyOwner {
-        require(_token == ICurveFi_3T(_CurvePool).coins(0) || _token == ICurveFi_3T(_CurvePool).coins(1) || _token == ICurveFi_3T(_CurvePool).coins(2), "CurveBeefyStrategyT3: Token not available for this pool");
-        require(_CurveReceipt == IBeefyVault(_BeefyVault).want(), "CurveBeefyStrategyT3: Receipt not available for this vault");
+        if(_token != ICurveFi_3T(_CurvePool).coins(0) && _token != ICurveFi_3T(_CurvePool).coins(1) && _token != ICurveFi_3T(_CurvePool).coins(2)) revert TOKEN_NO_MATCH();
+        if(_CurveReceipt != IBeefyVault(_BeefyVault).want()) revert RECEIPT_NO_MATCH();
         ibStrategy[_token].CurvePool = _CurvePool;
         ibStrategy[_token].CurveReceipt = _CurveReceipt;
         ibStrategy[_token].BeefyVault = _BeefyVault;
@@ -83,7 +87,7 @@ contract CurveBeefyStrategyT3 is Ownable {
         ERC20(_curveReceipt).approve(_contract, _amount);
         IBeefyVault(_contract).deposit(_amount);
         uint256 receiptAmount = IBeefyVault(_contract).balanceOf(address(this));
-        require (IBeefyVault(_contract).transfer(_receiver, receiptAmount), "CurveBeefyStrategyT3: Error transfer Vault receipt");
+        if(!IBeefyVault(_contract).transfer(_receiver, receiptAmount)) revert ERROR_TRANSFER();
         emit Staked(_contract, _receiver, receiptAmount);
     }
 }
