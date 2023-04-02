@@ -13,7 +13,6 @@
 
 // File: NHistorian.sol
 
-
 pragma solidity 0.8.17;
 
 /**
@@ -49,7 +48,6 @@ contract NHistorian {
      * @param   _struct  data to be stored.
      */
     function _storeDCA(address _userAddress, histDetail memory _struct) internal {
-        require(_userAddress != address(0), "NHistorian: Null address not allowed");
         //buffer
         database[_userAddress].bufferId = database[_userAddress].bufferId >= 200 ? 1 : database[_userAddress].bufferId +1;
         uint8 bufferId = database[_userAddress].bufferId;
@@ -1086,6 +1084,16 @@ pragma solidity 0.8.17;
 
 
 
+error NOT_MANAGER();
+error ZERO_ADDRESS();
+error INVALID_TAU();
+error INVALID_ID();
+error ALREADY_CREATED();
+error ALREADY_CLOSED();
+error INSUFFICIENT_APPROVAL();
+error INSUFFICIENT_BALANCE();
+error MAX_POSITIONS_REACHED();
+error EXECUTION_NOT_REQUIRED();
 /**
  * @author  Hyper0x0 for NEON Protocol.
  * @title   NCore.
@@ -1156,7 +1164,7 @@ contract NCore {
     event DCAError(uint40 positionId, address indexed owner, uint8 strike);
 
     modifier onlyManager() {
-        require(msg.sender == MANAGER, "NCore: Only Manager is allowed");
+        if(msg.sender != MANAGER) revert NOT_MANAGER();
         _;
     }
 
@@ -1198,18 +1206,18 @@ contract NCore {
         uint40 _reqExecution,
         bool _nowFirstExecution
     ) external onlyManager {
-        require(_user != address(0) && _reciever != address(0), "NDCA: Null address not allowed");
+        if(_user == address(0) || _reciever == address(0)) revert ZERO_ADDRESS();
         //require not needed, in the Core they are already checked against NPairs
-        require(_tau >= MIN_TAU && _tau <= MAX_TAU, "NDCA: Tau out of limits");
+        if(_tau < MIN_TAU || _tau > MAX_TAU) revert INVALID_TAU();
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
-        require(DCAs[dcaPosition[uniqueId]].owner == address(0), "NDCA: Already created with this pair");
+        if(DCAs[dcaPosition[uniqueId]].owner != address(0)) revert ALREADY_CREATED();
         uint256 allowanceToAdd = _reqExecution == 0 ? (DEFAULT_APPROVAL * 10 ** ERC20(_srcToken).decimals()) : (_srcAmount * _reqExecution);
         address owner = _user;//too avoid "Stack too Deep"
         userAllowance[owner][_srcToken] = (userAllowance[owner][_srcToken] + allowanceToAdd) < type(uint256).max ? (userAllowance[owner][_srcToken] + allowanceToAdd) : type(uint256).max;
-        require(ERC20(_srcToken).allowance(owner, address(this)) >= userAllowance[owner][_srcToken],"NDCA: Insufficient approved token");
-        require(ERC20(_srcToken).balanceOf(owner) >= _srcAmount,"NDCA: Insufficient balance");
+        if(ERC20(_srcToken).allowance(owner, address(this)) < userAllowance[owner][_srcToken]) revert INSUFFICIENT_APPROVAL();
+        if(ERC20(_srcToken).balanceOf(owner) < _srcAmount) revert INSUFFICIENT_BALANCE();
         if(dcaPosition[uniqueId] == 0){
-            require(totalPositions <= type(uint40).max, "NDCA: Reached max positions");
+            if(totalPositions > type(uint40).max) revert MAX_POSITIONS_REACHED();
             unchecked {
                 totalPositions ++;
             }
@@ -1247,9 +1255,9 @@ contract NCore {
      * @param   _ibStrategy  Strategy address.
      */
     function closeDCA(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) public onlyManager {
-        require(_user != address(0), "NDCA: Null address not allowed");
+        if(_user == address(0)) revert ZERO_ADDRESS();
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
-        require(DCAs[dcaPosition[uniqueId]].owner != address(0), "NDCA: Already closed");
+        if(DCAs[dcaPosition[uniqueId]].owner == address(0)) revert ALREADY_CLOSED();
         DCAs[dcaPosition[uniqueId]].owner = address(0);
         uint256 allowanceToRemove;
         if(DCAs[dcaPosition[uniqueId]].reqExecution == 0){
@@ -1272,9 +1280,9 @@ contract NCore {
      * @param   _ibStrategy  Strategy address.
      */
     function skipNextExecution(address _user, address _srcToken, uint256 _chainId, address _destToken, address _ibStrategy) external onlyManager {
-        require(_user != address(0), "NDCA: Null address not allowed");
+        if(_user == address(0)) revert ZERO_ADDRESS();
         bytes32 uniqueId = _getId(_user, _srcToken, _chainId, _destToken, _ibStrategy);
-        require(DCAs[dcaPosition[uniqueId]].owner != address(0), "NDCA: Already closed");
+        if(DCAs[dcaPosition[uniqueId]].owner == address(0)) revert ALREADY_CLOSED();
         unchecked {
             DCAs[dcaPosition[uniqueId]].nextExecution += (DCAs[dcaPosition[uniqueId]].tau * TIME_BASE);
         }
@@ -1285,8 +1293,8 @@ contract NCore {
      * @param   _dcaId  Id of the DCA.
      */
     function initExecution(uint40 _dcaId) external onlyManager {
-        require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
-        require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
+        if(_dcaId == 0 || _dcaId > totalPositions) revert INVALID_ID();
+        if(block.timestamp < DCAs[_dcaId].nextExecution) revert EXECUTION_NOT_REQUIRED();
         if(!DCAs[_dcaId].initExecution){
             DCAs[_dcaId].initExecution = true;
             ERC20(DCAs[_dcaId].srcToken).safeTransferFrom(DCAs[_dcaId].owner, RESOLVER, DCAs[_dcaId].srcAmount);
@@ -1302,8 +1310,8 @@ contract NCore {
      * @return  reason  Reason for the closure of the DCA.
      */
     function updateDCA(uint40 _dcaId, uint256 _destTokenAmount, uint16 _code, uint256 _averagePrice) external onlyManager returns (bool toBeStored, uint8 reason){
-        require(_dcaId != 0 && _dcaId <= totalPositions, "NDCA: Id out of range");
-        require(block.timestamp >= DCAs[_dcaId].nextExecution, "NDCA: Execution not required");
+        if(_dcaId == 0 || _dcaId > totalPositions) revert INVALID_ID();
+        if(block.timestamp < DCAs[_dcaId].nextExecution) revert EXECUTION_NOT_REQUIRED();
         uint40 actualtime = (block.timestamp - DCAs[_dcaId].nextExecution) >= TIME_BASE ? (uint40(block.timestamp) - 3600) : DCAs[_dcaId].nextExecution;
         DCAs[_dcaId].nextExecution =  actualtime + (DCAs[_dcaId].tau * TIME_BASE);
         DCAs[_dcaId].code = _code;
@@ -1496,6 +1504,12 @@ contract NCore {
 pragma solidity 0.8.17;
 
 
+error NOT_OWNER();
+error ZERO_ADDRESS_2();
+error INVALID_CHAIN();
+error ALREADY_LISTED();
+error NOT_LISTED();
+
 /**
  * @author  Hyper0x0 for NEON Protocol.
  * @title   NPairs.
@@ -1524,7 +1538,7 @@ contract NPairs {
     event DestTokenListed(uint256 chainId, address indexed token, string symbol);
 
     modifier onlyOwner() {
-        require(msg.sender == OWNER, "NPairs: Only Owner is allowed");
+        if(msg.sender != OWNER) revert NOT_OWNER();
         _;
     }
 
@@ -1538,8 +1552,8 @@ contract NPairs {
      * @param   _token  Token address.
      */
     function listSrcToken(address _token) external onlyOwner {
-        require(_token != address(0), "NPairs: Null address not allowed");
-        require(!srcToken[_token], "NPairs: Token already listed");
+        if(_token == address(0)) revert ZERO_ADDRESS_2();
+        if(srcToken[_token]) revert ALREADY_LISTED();
         _listSrcToken(_token);
     }
     /**
@@ -1551,9 +1565,9 @@ contract NPairs {
      * @param   _symbol  Token symbol.
      */
     function listDestToken(uint256 _chainId, address _token, uint8 _decimals, string memory _symbol) external onlyOwner {
-        require(_token != address(0), "NPairs: Null address not allowed");
-        require(_chainId != 0, "NPairs: Chain ID must be > 0");
-        require(!destToken[_chainId][_token].active, "NPairs: Token already listed");
+        if(_token == address(0)) revert ZERO_ADDRESS_2();
+        if(_chainId == 0) revert INVALID_CHAIN();
+        if(destToken[_chainId][_token].active) revert ALREADY_LISTED();
         _listDestToken(_chainId, _token, _decimals, _symbol);
     }
     /**
@@ -1563,9 +1577,8 @@ contract NPairs {
      * @param   _destToken  Destination token address.
      */
     function blacklistPair(address _srcToken, uint256 _chainId, address _destToken) external onlyOwner {
-        require(_srcToken != address(0) && _destToken != address(0), "NPairs: Null address not allowed");
-        require(srcToken[_srcToken], "NPairs: Src.Token not listed");
-        require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
+        if(_srcToken == address(0) || _destToken== address(0)) revert ZERO_ADDRESS_2();
+        if(!srcToken[_srcToken] || !destToken[_chainId][_destToken].active) revert NOT_LISTED();
         NotAwailablePair[_srcToken][_chainId][_destToken] = !NotAwailablePair[_srcToken][_chainId][_destToken];
     }
     /* VIEW METHODS */
@@ -1583,9 +1596,8 @@ contract NPairs {
      * @return  true if pair is available.
      */
     function isPairAvailable(address _srcToken, uint256 _chainId, address _destToken) public view returns(bool){
-        require(_srcToken != address(0) && _destToken != address(0), "NPairs: Null address not allowed");
-        require(srcToken[_srcToken], "NPairs: Src.Token not listed");
-        require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
+        if(_srcToken == address(0) || _destToken== address(0)) revert ZERO_ADDRESS_2();
+        if(!srcToken[_srcToken] || !destToken[_chainId][_destToken].active) revert NOT_LISTED();
         return !(NotAwailablePair[_srcToken][_chainId][_destToken]);
     }
     /* PRIVATE */
@@ -1624,6 +1636,10 @@ pragma solidity 0.8.17;
 
 
 
+error NOT_RESOLVER();
+error RESOLVER_BUSY();
+error PAIR_NOT_AVAILABLE();
+error STRATEGY_NOT_AVAILABLE();
 
 /**
  * @author  Hyper0x0 for NEON Protocol.
@@ -1661,12 +1677,12 @@ contract NManager is NHistorian {
     address immutable public RESOLVER;
 
     modifier onlyResolver() {
-        require(msg.sender == RESOLVER, "NManager: Only Resolver is allowed");
+        if(msg.sender != RESOLVER) revert NOT_RESOLVER();
         _;
     }
 
     modifier resolverFree() {
-        require(!resolverBusy, "NManager: Resolver is computing, try later");
+        if(resolverBusy) revert RESOLVER_BUSY();
         _;
     }
 
@@ -1705,11 +1721,11 @@ contract NManager is NHistorian {
         uint8 _tau,
         uint40 _reqExecution,
         bool _nowFirstExecution
-    ) external resolverFree {  
-        require(NPairs(POOL).isPairAvailable(_srcToken, _chainId, _destToken), "NManager: Selected pair not available");
+    ) external resolverFree { 
+        if(!NPairs(POOL).isPairAvailable(_srcToken, _chainId, _destToken)) revert PAIR_NOT_AVAILABLE(); 
         address strategy;
         if(_chainId == block.chainid && _ibStrategy != address(0)){
-            require(INStrategyIb(_ibStrategy).available(_destToken), "NManager: Selected strategy not available");
+            if(!INStrategyIb(_ibStrategy).available(_destToken)) revert STRATEGY_NOT_AVAILABLE();
             strategy = _ibStrategy;
         }
         NCore(CORE).createDCA(msg.sender, _reciever, _srcToken, _chainId, _destToken, _destDecimals, strategy, _srcAmount, _tau, _reqExecution, _nowFirstExecution);

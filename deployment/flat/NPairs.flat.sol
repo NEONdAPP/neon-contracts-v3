@@ -517,6 +517,12 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
 pragma solidity 0.8.17;
 
 
+error NOT_OWNER();
+error ZERO_ADDRESS_2();
+error INVALID_CHAIN();
+error ALREADY_LISTED();
+error NOT_LISTED();
+
 /**
  * @author  Hyper0x0 for NEON Protocol.
  * @title   NPairs.
@@ -545,7 +551,7 @@ contract NPairs {
     event DestTokenListed(uint256 chainId, address indexed token, string symbol);
 
     modifier onlyOwner() {
-        require(msg.sender == OWNER, "NPairs: Only Owner is allowed");
+        if(msg.sender != OWNER) revert NOT_OWNER();
         _;
     }
 
@@ -559,8 +565,8 @@ contract NPairs {
      * @param   _token  Token address.
      */
     function listSrcToken(address _token) external onlyOwner {
-        require(_token != address(0), "NPairs: Null address not allowed");
-        require(!srcToken[_token], "NPairs: Token already listed");
+        if(_token == address(0)) revert ZERO_ADDRESS_2();
+        if(srcToken[_token]) revert ALREADY_LISTED();
         _listSrcToken(_token);
     }
     /**
@@ -572,9 +578,9 @@ contract NPairs {
      * @param   _symbol  Token symbol.
      */
     function listDestToken(uint256 _chainId, address _token, uint8 _decimals, string memory _symbol) external onlyOwner {
-        require(_token != address(0), "NPairs: Null address not allowed");
-        require(_chainId != 0, "NPairs: Chain ID must be > 0");
-        require(!destToken[_chainId][_token].active, "NPairs: Token already listed");
+        if(_token == address(0)) revert ZERO_ADDRESS_2();
+        if(_chainId == 0) revert INVALID_CHAIN();
+        if(destToken[_chainId][_token].active) revert ALREADY_LISTED();
         _listDestToken(_chainId, _token, _decimals, _symbol);
     }
     /**
@@ -584,9 +590,8 @@ contract NPairs {
      * @param   _destToken  Destination token address.
      */
     function blacklistPair(address _srcToken, uint256 _chainId, address _destToken) external onlyOwner {
-        require(_srcToken != address(0) && _destToken != address(0), "NPairs: Null address not allowed");
-        require(srcToken[_srcToken], "NPairs: Src.Token not listed");
-        require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
+        if(_srcToken == address(0) || _destToken== address(0)) revert ZERO_ADDRESS_2();
+        if(!srcToken[_srcToken] || !destToken[_chainId][_destToken].active) revert NOT_LISTED();
         NotAwailablePair[_srcToken][_chainId][_destToken] = !NotAwailablePair[_srcToken][_chainId][_destToken];
     }
     /* VIEW METHODS */
@@ -604,9 +609,8 @@ contract NPairs {
      * @return  true if pair is available.
      */
     function isPairAvailable(address _srcToken, uint256 _chainId, address _destToken) public view returns(bool){
-        require(_srcToken != address(0) && _destToken != address(0), "NPairs: Null address not allowed");
-        require(srcToken[_srcToken], "NPairs: Src.Token not listed");
-        require(destToken[_chainId][_destToken].active, "NPairs: Dest.Token not listed");
+        if(_srcToken == address(0) || _destToken== address(0)) revert ZERO_ADDRESS_2();
+        if(!srcToken[_srcToken] || !destToken[_chainId][_destToken].active) revert NOT_LISTED();
         return !(NotAwailablePair[_srcToken][_chainId][_destToken]);
     }
     /* PRIVATE */
