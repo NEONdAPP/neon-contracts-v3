@@ -247,7 +247,7 @@ contract NCore {
         }else{
             if(DCAs[_dcaId].initExecution){
                 DCAs[_dcaId].initExecution = false;
-                _refund(_code, _dcaId, _destTokenAmount);
+                if(_code != 407){_refund(_code, _dcaId, _destTokenAmount);} //Manual refund required
             }
             unchecked {
                 DCAs[_dcaId].strike ++;
