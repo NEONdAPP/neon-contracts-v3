@@ -17,7 +17,7 @@ It is made up of 4 main contracts.
 | Name | Contract | Description |
 |--------|---------|---------|
 |`NManager`|Main|Manage the protocol, call by the UI and resolve flow|
-|`NHistorian`|Abstract|Takes care of historicizing the data of past DCAs for each user|
+|`NHistorian`|Inheritance|Takes care of historicizing the data of past DCAs for each user|
 |`NCore`|Secondary|Manages DCAs, from creation to execution|
 |`NPairs`|Secondary|Listing and checking the validity of the tokens pairs set in the DCAs|
 

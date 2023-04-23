@@ -35,31 +35,30 @@ describe("NPairs Testing", function () {
         });
     });
     
-    describe("Function 'listSrcToken'", function () {
+    describe("Function 'listSrcTokens'", function () {
     //Fail Events
         it("Should fail if not Owner", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
 
             await expect(
-                contract.connect(addr1).listSrcToken(owner.address)
+                contract.connect(addr1).listSrcTokens([owner.address])
               ).to.be.revertedWithCustomError(contract, "NOT_OWNER");
         });
 
         it("Should fail if address is 0x0", async function () {
             const { contract, owner } = await loadFixture(deployContract);
-
             await expect(
-                contract.connect(owner).listSrcToken(ethers.constants.AddressZero)
+                contract.connect(owner).listSrcTokens([ethers.constants.AddressZero])
             ).to.be.revertedWithCustomError(contract, "ZERO_ADDRESS_2");
         });
 
         it("Should fail if Token is already listed", async function () {
             const { contract, owner } = await loadFixture(deployContract);
             const { token1 } = await loadFixture(deployToken1);
-            await contract.connect(owner).listSrcToken(token1.address);
+            const tokens = [token1.address, token1.address];
 
             await expect(
-                contract.connect(owner).listSrcToken(token1.address)
+                contract.connect(owner).listSrcTokens(tokens)
             ).to.be.revertedWithCustomError(contract, "ALREADY_LISTED");
         });
 
@@ -68,7 +67,7 @@ describe("NPairs Testing", function () {
             const { contract, owner } = await loadFixture(deployContract);
             const { token1 } = await loadFixture(deployToken1);
 
-            await expect(contract.connect(owner).listSrcToken(token1.address))
+            await expect(contract.connect(owner).listSrcTokens([token1.address]))
             .to.emit(contract, "SrcTokenListed")
             .withArgs(token1.address, await token1.symbol());
         });
@@ -77,21 +76,20 @@ describe("NPairs Testing", function () {
             const { contract, owner } = await loadFixture(deployContract);
             const { token1 } = await loadFixture(deployToken1);
             const { token2 } = await loadFixture(deployToken2);
-            await contract.connect(owner).listSrcToken(token1.address);
-            await contract.connect(owner).listSrcToken(token2.address);
+            await contract.connect(owner).listSrcTokens([token1.address, token2.address]);
             var result = await contract.connect(owner).totalListed();
 
             expect(result[0]).to.equal(2);
         });
     });
 
-    describe("Function 'listDestToken'", function () {
+    describe("Function 'listDestTokens'", function () {
         //Fail Events
         it("Should fail if not Owner", async function () {
             const { contract, owner, addr1 } = await loadFixture(deployContract);
 
             await expect(
-                contract.connect(addr1).listDestToken(1, owner.address, 18, "TST")
+                contract.connect(addr1).listDestTokens([1], [owner.address], [18], ["TST"])
             ).to.be.revertedWithCustomError(contract, "NOT_OWNER");
         });
 
@@ -99,7 +97,7 @@ describe("NPairs Testing", function () {
             const { contract, owner } = await loadFixture(deployContract);
 
             await expect(
-                contract.connect(owner).listDestToken(1, ethers.constants.AddressZero, 18, "TST")
+                contract.connect(owner).listDestTokens([1], [ethers.constants.AddressZero], [18], ["TST"])
             ).to.be.revertedWithCustomError(contract, "ZERO_ADDRESS_2");
         });
 
@@ -107,17 +105,17 @@ describe("NPairs Testing", function () {
             const { contract, owner } = await loadFixture(deployContract);
 
             await expect(
-                contract.connect(owner).listDestToken(0, owner.address, 18, "TST")
+                contract.connect(owner).listDestTokens([0], [owner.address], [18], ["TST"])
             ).to.be.revertedWithCustomError(contract, "INVALID_CHAIN");
         });
 
         it("Should fail if Token is already listed", async function () {
             const { contract, owner } = await loadFixture(deployContract);
             const { token1 } = await loadFixture(deployToken1);
-            await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
+            //await contract.connect(owner).listDestTokens([1, 1], [token1.address, token1.address], [18, 18], ["TST", "TST"]);
 
             await expect(
-                contract.connect(owner).listDestToken(1, token1.address, 18, "TST")
+                contract.connect(owner).listDestTokens([1, 1], [token1.address, token1.address], [18, 18], ["TST", "TST"])
             ).to.be.revertedWithCustomError(contract, "ALREADY_LISTED");
         });
 
@@ -126,7 +124,7 @@ describe("NPairs Testing", function () {
             const { contract, owner } = await loadFixture(deployContract);
             const { token1 } = await loadFixture(deployToken1);
 
-            await expect(contract.connect(owner).listDestToken(1, token1.address, 18, "TST"))
+            await expect(contract.connect(owner).listDestTokens([1], [token1.address], [18], ["TST"]))
             .to.emit(contract, "DestTokenListed")
             .withArgs(1, token1.address, "TST");
         });
@@ -136,11 +134,11 @@ describe("NPairs Testing", function () {
             const { token1 } = await loadFixture(deployToken1);
             const { token2 } = await loadFixture(deployToken2);
 
-            await expect(contract.connect(owner).listDestToken(1, token1.address, 18, "TST"))
+            await expect(contract.connect(owner).listDestTokens([1], [token1.address], [18], ["TST"]))
             .to.emit(contract, "DestTokenListed")
             .withArgs(1, token1.address, "TST");
 
-            await expect(contract.connect(owner).listDestToken(2, token1.address, 18, "TST"))
+            await expect(contract.connect(owner).listDestTokens([2], [token1.address], [18], ["TST"]))
             .to.emit(contract, "DestTokenListed")
             .withArgs(2, token1.address, "TST");
         });
@@ -149,9 +147,7 @@ describe("NPairs Testing", function () {
             const { contract, owner } = await loadFixture(deployContract);
             const { token1 } = await loadFixture(deployToken1);
             const { token2 } = await loadFixture(deployToken2);
-            await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
-            await contract.connect(owner).listDestToken(1, token2.address, 18, "TST");
-            await contract.connect(owner).listDestToken(2, token2.address, 18, "TST");
+            await contract.connect(owner).listDestTokens([1, 1, 2], [token1.address, token2.address, token2.address], [18, 18, 18], ["TST", "TST", "TST"]);
             var result = await contract.connect(owner).totalListed();
 
             expect(result[1]).to.equal(3);
@@ -195,7 +191,7 @@ describe("NPairs Testing", function () {
         it("Should fail if DestToken not listed", async function () {
             const { contract, owner } = await loadFixture(deployContract);
             const { token1 } = await loadFixture(deployToken1);
-            await contract.connect(owner).listSrcToken(token1.address);
+            await contract.connect(owner).listSrcTokens([token1.address]);
 
             await expect(
                 contract.connect(owner).blacklistPair(token1.address, 1, owner.address)
@@ -206,8 +202,8 @@ describe("NPairs Testing", function () {
         it("Should return 'true' if combination available", async function () {
             const { contract, owner } = await loadFixture(deployContract);
             const { token1 } = await loadFixture(deployToken1);
-            await contract.connect(owner).listSrcToken(token1.address);
-            await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
+            await contract.connect(owner).listSrcTokens([token1.address]);
+            await contract.connect(owner).listDestTokens([1], [token1.address], [18], ["TST"]);
 
             expect(await contract.connect(owner).isPairAvailable(token1.address, 1, token1.address)).to.equal(true);
         });
@@ -215,8 +211,8 @@ describe("NPairs Testing", function () {
         it("Should return 'false' if combination not available", async function () {
             const { contract, owner } = await loadFixture(deployContract);
             const { token1 } = await loadFixture(deployToken1);
-            await contract.connect(owner).listSrcToken(token1.address);
-            await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
+            await contract.connect(owner).listSrcTokens([token1.address]);
+            await contract.connect(owner).listDestTokens([1], [token1.address], [18], ["TST"]);
             await contract.connect(owner).blacklistPair(token1.address, 1, token1.address)
 
             expect(await contract.connect(owner).isPairAvailable(token1.address, 1, token1.address)).to.equal(false);
@@ -226,10 +222,8 @@ describe("NPairs Testing", function () {
             const { contract, owner } = await loadFixture(deployContract);
             const { token1 } = await loadFixture(deployToken1);
             const { token2 } = await loadFixture(deployToken2);
-            await contract.connect(owner).listSrcToken(token1.address);
-            await contract.connect(owner).listSrcToken(token2.address);
-            await contract.connect(owner).listDestToken(1, token1.address, 18, "TST");
-            await contract.connect(owner).listDestToken(1, token2.address, 18, "TST");
+            await contract.connect(owner).listSrcTokens([token1.address, token2.address]);
+            await contract.connect(owner).listDestTokens([1, 1], [token1.address, token2.address], [18, 18], ["TST", "TST"]);
             await contract.connect(owner).blacklistPair(token1.address, 1, token1.address)
             /* Combinations (Based on chainId 1)
                 Token1 - Token1
@@ -257,7 +251,7 @@ describe("NPairs Testing", function () {
         it("Should fail if DestToken not listed", async function () {
             const { contract, owner } = await loadFixture(deployContract);
             const { token1 } = await loadFixture(deployToken1);
-            await contract.connect(owner).listSrcToken(token1.address);
+            await contract.connect(owner).listSrcTokens([token1.address]);
 
             await expect(
                 contract.connect(owner).isPairAvailable(token1.address, 1, owner.address)

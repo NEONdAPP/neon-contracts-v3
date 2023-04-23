@@ -49,8 +49,8 @@ describe("Neon Protocol (NManager) Testing", function () {
 
     //pre-build funcionalities
     async function listToken(_owner, _contract, _pool, _srcToken, _destToken){
-        await _pool.connect(_owner).listSrcToken(_srcToken.address);
-        await _pool.connect(_owner).listDestToken(_contract.deployTransaction.chainId, _destToken.address, 18, "NEON");
+        await _pool.connect(_owner).listSrcTokens([_srcToken.address]);
+        await _pool.connect(_owner).listDestTokens([_contract.deployTransaction.chainId], [_destToken.address], [18], ["NEON"]);
     }
 
     async function strategyEnable(_destToken){
@@ -189,7 +189,7 @@ describe("Neon Protocol (NManager) Testing", function () {
             const { contract, pool, dca, owner, addr1 } = await loadFixture(deployContract);
             const { neonToken1 } = await loadFixture(deployNeonToken1);
             await listToken(owner, contract, pool, neonToken1, neonToken1);
-            await pool.connect(owner).listDestToken(1, neonToken1.address, 18, "NEON");
+            await pool.connect(owner).listDestTokens([1], [neonToken1.address], [18], ["NEON"]);
             const { strategy } = await strategyEnable(neonToken1);
             const params = {
                 user: owner.address,
@@ -332,7 +332,7 @@ describe("Neon Protocol (NManager) Testing", function () {
                 const { contract, pool, dca, owner, addr1 } = await loadFixture(deployContract);
                 const { neonToken1 } = await loadFixture(deployNeonToken1);
                 await listToken(owner, contract, pool, neonToken1, neonToken1);
-                await pool.connect(owner).listDestToken(1, neonToken1.address, 18, "NEON");
+                await pool.connect(owner).listDestTokens([1], [neonToken1.address], [18], ["NEON"]);
                 const { strategy } = await strategyEnable(neonToken1);
                 await neonToken1.connect(owner).transfer(addr1.address, ethers.utils.parseUnits(String(500)));
 
