@@ -13,6 +13,7 @@
 
 // File: NHistorian.sol
 
+
 pragma solidity 0.8.17;
 
 /**
@@ -1549,26 +1550,32 @@ contract NPairs {
     /* WRITE METHODS*/
     /**
      * @notice  List source token that will be swapped.
-     * @param   _token  Token address.
+     * @param   _tokens  Tokens address.
      */
-    function listSrcToken(address _token) external onlyOwner {
-        if(_token == address(0)) revert ZERO_ADDRESS_2();
-        if(srcToken[_token]) revert ALREADY_LISTED();
-        _listSrcToken(_token);
+    function listSrcTokens(address[] memory _tokens) external onlyOwner {
+        uint40 length = uint40(_tokens.length);
+        for(uint40 i; i < length; i ++){
+            if(_tokens[i] == address(0)) revert ZERO_ADDRESS_2();
+            if(srcToken[_tokens[i]]) revert ALREADY_LISTED();
+            _listSrcToken(_tokens[i]);
+        }
     }
     /**
      * @notice  List destination token that will be recieved.
      * @dev     _decimals & _symbol will be need if chain id is different from the current one.
-     * @param   _chainId  Destination chain id.
-     * @param   _token  Token address.
-     * @param   _decimals  Token decimals.
-     * @param   _symbol  Token symbol.
+     * @param   _chainIds  Destination chain ids.
+     * @param   _tokens  Tokens address.
+     * @param   _decimals  Tokens decimals.
+     * @param   _symbols  Tokens symbol.
      */
-    function listDestToken(uint256 _chainId, address _token, uint8 _decimals, string memory _symbol) external onlyOwner {
-        if(_token == address(0)) revert ZERO_ADDRESS_2();
-        if(_chainId == 0) revert INVALID_CHAIN();
-        if(destToken[_chainId][_token].active) revert ALREADY_LISTED();
-        _listDestToken(_chainId, _token, _decimals, _symbol);
+    function listDestTokens(uint256[] memory _chainIds, address[] memory _tokens, uint8[] memory _decimals, string[] memory _symbols) external onlyOwner {
+        uint40 length = uint40(_chainIds.length);
+        for(uint40 i; i < length; i ++){
+            if(_tokens[i] == address(0)) revert ZERO_ADDRESS_2();
+            if(_chainIds[i] == 0) revert INVALID_CHAIN();
+            if(destToken[_chainIds[i]][_tokens[i]].active) revert ALREADY_LISTED();
+            _listDestToken(_chainIds[i], _tokens[i], _decimals[i], _symbols[i]);
+        }
     }
     /**
      * @notice  Blacklist combination of tokens.
