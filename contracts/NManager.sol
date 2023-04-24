@@ -228,6 +228,14 @@ contract NManager is NHistorian {
         return (outData, id);
     }
     /**
+     * @notice  Retrieve data for UI of a single active DCAs.
+     * @param   _dcaId  Id of the DCA.
+     * @return  NCore.dcaDetail  DCA info data.
+     */
+    function getSingleDetail(uint40 _dcaId) external view returns (NCore.dcaDetail memory){
+        return NCore(CORE).detailDCA(_dcaId, msg.sender);
+    }
+    /**
      * @notice  Retrieve data for UI of closed DCAs.
      * @return  histDetail[]  Array (Tuple) of data struct.
      * @return  nBatch  Number of History DCAs retrieved.

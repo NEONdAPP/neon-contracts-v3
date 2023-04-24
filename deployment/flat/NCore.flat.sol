@@ -11,7 +11,7 @@
 */
 //SPDX-License-Identifier: MIT
 
-// File: utils/Address.sol
+// File: contracts/contracts/utils/Address.sol
 
 // OpenZeppelin Contracts (last updated v4.8.0) (utils/Address.sol)
 
@@ -256,7 +256,7 @@ library Address {
         }
     }
 }
-// File: extensions/IERC20Permit.sol
+// File: contracts/contracts/extensions/IERC20Permit.sol
 
 
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/IERC20Permit.sol)
@@ -318,7 +318,7 @@ interface IERC20Permit {
     // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
-// File: utils/Context.sol
+// File: contracts/contracts/utils/Context.sol
 
 
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
@@ -344,7 +344,7 @@ abstract contract Context {
         return msg.data;
     }
 }
-// File: interfaces/IERC20.sol
+// File: contracts/contracts/interfaces/IERC20.sol
 
 
 // OpenZeppelin Contracts (last updated v4.6.0) (token/ERC20/IERC20.sol)
@@ -424,7 +424,7 @@ interface IERC20 {
      */
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
 }
-// File: utils/SafeERC20.sol
+// File: contracts/contracts/utils/SafeERC20.sol
 
 
 // OpenZeppelin Contracts (last updated v4.8.0) (token/ERC20/utils/SafeERC20.sol)
@@ -520,7 +520,7 @@ library SafeERC20 {
         }
     }
 }
-// File: extensions/IERC20Metadata.sol
+// File: contracts/contracts/extensions/IERC20Metadata.sol
 
 
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/IERC20Metadata.sol)
@@ -549,7 +549,7 @@ interface IERC20Metadata is IERC20 {
      */
     function decimals() external view returns (uint8);
 }
-// File: lib/ERC20.sol
+// File: contracts/contracts/lib/ERC20.sol
 
 
 // OpenZeppelin Contracts (last updated v4.8.0) (token/ERC20/ERC20.sol)
@@ -915,7 +915,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      */
     function _afterTokenTransfer(address from, address to, uint256 amount) internal virtual {}
 }
-// File: NCore.sol
+// File: contracts/contracts/NCore.sol
 
 
 pragma solidity 0.8.17;
@@ -963,6 +963,7 @@ contract NCore {
     }
 
     struct dcaDetail{
+        uint40 dcaId;
         address reciever;
         address srcToken;
         uint256 chainId;
@@ -1165,7 +1166,7 @@ contract NCore {
         }else{
             if(DCAs[_dcaId].initExecution){
                 DCAs[_dcaId].initExecution = false;
-                _refund(_code, _dcaId, _destTokenAmount);
+                if(_code != 407){_refund(_code, _dcaId, _destTokenAmount);} //Manual refund required
             }
             unchecked {
                 DCAs[_dcaId].strike ++;
@@ -1282,6 +1283,7 @@ contract NCore {
     function detailDCA(uint40 _dcaId, address _user) external view onlyManager returns (dcaDetail memory){
         dcaDetail memory data;
         if(DCAs[_dcaId].owner == _user){
+            data.dcaId = _dcaId;
             data.reciever = DCAs[_dcaId].reciever;
             data.srcToken = DCAs[_dcaId].srcToken;
             data.chainId = DCAs[_dcaId].chainId;

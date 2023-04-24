@@ -45,6 +45,7 @@ contract NCore {
     }
 
     struct dcaDetail{
+        uint40 dcaId;
         address reciever;
         address srcToken;
         uint256 chainId;
@@ -364,6 +365,7 @@ contract NCore {
     function detailDCA(uint40 _dcaId, address _user) external view onlyManager returns (dcaDetail memory){
         dcaDetail memory data;
         if(DCAs[_dcaId].owner == _user){
+            data.dcaId = _dcaId;
             data.reciever = DCAs[_dcaId].reciever;
             data.srcToken = DCAs[_dcaId].srcToken;
             data.chainId = DCAs[_dcaId].chainId;
