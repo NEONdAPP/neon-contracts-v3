@@ -326,6 +326,14 @@ contract NCore {
         }
     }
     /**
+     * @notice  Get DCA owner, who create it.
+     * @param   _dcaId  Id of the DCA.
+     * @return  address  Owner address.
+     */
+    function getOwnerDCA(uint40 _dcaId) external view onlyManager returns (address){
+        return DCAs[_dcaId].owner;
+    }
+    /**
      * @notice  Return data to execute the swap.
      * @param   _dcaId  Id of the DCA.
      * @return  reciever  Address where will recieve token / receipt.

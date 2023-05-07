@@ -11,7 +11,7 @@
 */
 //SPDX-License-Identifier: MIT
 
-// File: utils/Context.sol
+// File: contracts/utils/Context.sol
 
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
 
@@ -36,7 +36,7 @@ abstract contract Context {
         return msg.data;
     }
 }
-// File: interfaces/IERC20.sol
+// File: contracts/interfaces/IERC20.sol
 
 
 // OpenZeppelin Contracts (last updated v4.6.0) (token/ERC20/IERC20.sol)
@@ -116,7 +116,7 @@ interface IERC20 {
      */
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
 }
-// File: extensions/IERC20Metadata.sol
+// File: contracts/extensions/IERC20Metadata.sol
 
 
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/IERC20Metadata.sol)
@@ -145,7 +145,7 @@ interface IERC20Metadata is IERC20 {
      */
     function decimals() external view returns (uint8);
 }
-// File: lib/ERC20.sol
+// File: contracts/lib/ERC20.sol
 
 
 // OpenZeppelin Contracts (last updated v4.8.0) (token/ERC20/ERC20.sol)
@@ -511,7 +511,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      */
     function _afterTokenTransfer(address from, address to, uint256 amount) internal virtual {}
 }
-// File: NPairs.sol
+// File: contracts/NPairs.sol
 
 
 pragma solidity 0.8.17;

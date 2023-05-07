@@ -11,7 +11,7 @@
 */
 //SPDX-License-Identifier: MIT
 
-// File: contracts/contracts/NHistorian.sol
+// File: contracts/NHistorian.sol
 
 pragma solidity 0.8.17;
 
@@ -80,7 +80,7 @@ contract NHistorian {
         return (dataOut, totStored);
     }
 }
-// File: contracts/contracts/interfaces/INStrategyIb.sol
+// File: contracts/interfaces/INStrategyIb.sol
 
 pragma solidity 0.8.17;
 
@@ -88,7 +88,7 @@ interface INStrategyIb {
     function depositAndStake(address _source, address _receiver, address _token, uint256 _amount) external;
     function available(address _token) external view returns (bool);
 }
-// File: contracts/contracts/utils/Address.sol
+// File: contracts/utils/Address.sol
 
 
 // OpenZeppelin Contracts (last updated v4.8.0) (utils/Address.sol)
@@ -334,7 +334,7 @@ library Address {
         }
     }
 }
-// File: contracts/contracts/extensions/IERC20Permit.sol
+// File: contracts/extensions/IERC20Permit.sol
 
 
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/IERC20Permit.sol)
@@ -396,7 +396,7 @@ interface IERC20Permit {
     // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
-// File: contracts/contracts/utils/Context.sol
+// File: contracts/utils/Context.sol
 
 
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
@@ -422,7 +422,7 @@ abstract contract Context {
         return msg.data;
     }
 }
-// File: contracts/contracts/access/Ownable.sol
+// File: contracts/access/Ownable.sol
 
 
 // OpenZeppelin Contracts (last updated v4.7.0) (access/Ownable.sol)
@@ -506,7 +506,7 @@ abstract contract Ownable is Context {
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
-// File: contracts/contracts/interfaces/IERC20.sol
+// File: contracts/interfaces/IERC20.sol
 
 
 // OpenZeppelin Contracts (last updated v4.6.0) (token/ERC20/IERC20.sol)
@@ -586,7 +586,7 @@ interface IERC20 {
      */
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
 }
-// File: contracts/contracts/utils/SafeERC20.sol
+// File: contracts/utils/SafeERC20.sol
 
 
 // OpenZeppelin Contracts (last updated v4.8.0) (token/ERC20/utils/SafeERC20.sol)
@@ -682,7 +682,7 @@ library SafeERC20 {
         }
     }
 }
-// File: contracts/contracts/extensions/IERC20Metadata.sol
+// File: contracts/extensions/IERC20Metadata.sol
 
 
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/IERC20Metadata.sol)
@@ -711,7 +711,7 @@ interface IERC20Metadata is IERC20 {
      */
     function decimals() external view returns (uint8);
 }
-// File: contracts/contracts/lib/ERC20.sol
+// File: contracts/lib/ERC20.sol
 
 
 // OpenZeppelin Contracts (last updated v4.8.0) (token/ERC20/ERC20.sol)
@@ -1077,7 +1077,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      */
     function _afterTokenTransfer(address from, address to, uint256 amount) internal virtual {}
 }
-// File: contracts/contracts/NCore.sol
+// File: contracts/NCore.sol
 
 
 pragma solidity 0.8.17;
@@ -1406,6 +1406,14 @@ contract NCore {
         }
     }
     /**
+     * @notice  Get DCA owner, who create it.
+     * @param   _dcaId  Id of the DCA.
+     * @return  address  Owner address.
+     */
+    function getOwnerDCA(uint40 _dcaId) external view onlyManager returns (address){
+        return DCAs[_dcaId].owner;
+    }
+    /**
      * @notice  Return data to execute the swap.
      * @param   _dcaId  Id of the DCA.
      * @return  reciever  Address where will recieve token / receipt.
@@ -1500,7 +1508,7 @@ contract NCore {
         }
     }
 }
-// File: contracts/contracts/NPairs.sol
+// File: contracts/NPairs.sol
 
 
 pragma solidity 0.8.17;
@@ -1632,7 +1640,7 @@ contract NPairs {
         emit DestTokenListed(_chainId, _token, symbol);
     }
 }
-// File: contracts/contracts/NManager.sol
+// File: contracts/NManager.sol
 
 
 pragma solidity 0.8.17;
@@ -1662,6 +1670,7 @@ contract NManager is NHistorian {
         uint40 id;
         bool allowOk;
         bool balanceOk;
+        address owner;
         address reciever;
         address srcToken;
         uint8 srcDecimals;
@@ -1907,6 +1916,7 @@ contract NManager is NHistorian {
                 outData[id].id = i;
                 outData[id].allowOk = allowOk;
                 outData[id].balanceOk = balanceOk;
+                outData[id].owner = NCore(CORE).getOwnerDCA(i);
                 outData[id].reciever = reciever;
                 outData[id].srcToken = srcToken;
                 outData[id].srcDecimals = srcDecimals;

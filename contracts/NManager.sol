@@ -29,6 +29,7 @@ contract NManager is NHistorian {
         uint40 id;
         bool allowOk;
         bool balanceOk;
+        address owner;
         address reciever;
         address srcToken;
         uint8 srcDecimals;
@@ -274,6 +275,7 @@ contract NManager is NHistorian {
                 outData[id].id = i;
                 outData[id].allowOk = allowOk;
                 outData[id].balanceOk = balanceOk;
+                outData[id].owner = NCore(CORE).getOwnerDCA(i);
                 outData[id].reciever = reciever;
                 outData[id].srcToken = srcToken;
                 outData[id].srcDecimals = srcDecimals;

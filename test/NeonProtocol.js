@@ -466,7 +466,7 @@ describe("Neon Protocol (NManager) Testing", function () {
             expect(result[0][0].ibStrategy).to.equal(params.ibStrategy);
         });
         it("Get Resolver DCAs data", async function () {
-            const { contract, pool, dca, owner, addr1 } = await loadFixture(deployContract);
+            const { contract, pool, dca, owner } = await loadFixture(deployContract);
             const { neonToken1 } = await loadFixture(deployNeonToken1);
             const params = {
                 reciever: owner.address,
@@ -481,10 +481,10 @@ describe("Neon Protocol (NManager) Testing", function () {
                 nowFirstExecution: true
             };
             await listToken(owner, contract, pool, neonToken1, neonToken1);
-            const { strategy } = await strategyEnable(neonToken1);
             await createDCA(owner, contract, dca, neonToken1, params);
             const result = await contract.connect(owner).getDataDCA();
             expect(result[0][0].id).to.equal(1);
+            expect(result[0][0].owner).to.equal(owner.address);
             expect(result[0][0].srcToken).to.equal(params.srcToken);
             expect(result[0][0].destToken).to.equal(params.destToken);
             expect(result[0][0].ibStrategy).to.equal(params.ibStrategy);
