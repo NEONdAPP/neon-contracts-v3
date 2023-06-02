@@ -175,9 +175,10 @@ contract NManager is NHistorian {
                     code = 402;
                 }
             }
+            address owner = NCore(CORE).getOwnerDCA(tempData.id);
             (bool toBeStored, uint8 reason) = NCore(CORE).updateDCA(tempData.id, tempData.destTokenAmount, code, tempData.averagePrice);
             if(toBeStored){
-                _storeDCA(msg.sender, histDetail(srcToken, chainId, destToken, ibStrategy, uint40(block.timestamp), reason));
+                _storeDCA(owner, histDetail(srcToken, chainId, destToken, ibStrategy, uint40(block.timestamp), reason));
             }
         }
         _initResolver();
