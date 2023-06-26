@@ -1,4 +1,4 @@
-# <img src=".\docs\img\neon-complete-logo.webp" alt="OpenZeppelin" height="40px"> 
+# <img src=".\docs\img\neon-complete-logo.webp" alt="NeonProtocol" height="40px"> 
 
 This repository contains all contracts for protocol management `V3`
 
